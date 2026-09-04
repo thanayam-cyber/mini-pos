@@ -2137,7 +2137,7 @@ function removeFromCart(index) {
 // ============================================================
 
 async function checkoutPos(
-  paymentType
+  payment_method
 ) {
 
   if (cart.length === 0) {
@@ -2166,7 +2166,7 @@ async function checkoutPos(
   let reservationId = null;
 
 
-  if (paymentType === 'room') {
+  if (payment_method === 'room') {
 
     if (!window.currentGuest) {
 
