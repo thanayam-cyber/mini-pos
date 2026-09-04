@@ -964,24 +964,15 @@ async function saveReservation(event) {
   try {
 
     const reservation = {
-
-      guest_name: guestName,
-
-      check_in: checkIn,
-
-      check_out: checkOut,
-
-      occupancy: selection,
-
-      package: packageType,
-
-      safari: safari,
-
-      rate: rate,
-
-      status: 'Confirmed'
-
-    };
+  guest_name: guestName,
+  check_in: checkIn,
+  check_out: checkOut,
+  selection: selection,
+  package_type: packageType,
+  safari: safari,
+  rate: rate,
+  status: 'Confirmed'
+};
 
 
     const supabase =
