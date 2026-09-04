@@ -9,27 +9,22 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SUPABASE JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- SUPABASE CONNECTION -->
-  <script>
-    const SUPABASE_URL = 'https://eeuyrldhudoakitwhgwr.supabase.co';
+<!-- SUPABASE CONNECTION -->
+<script>
+  const SUPABASE_URL = 'https://eeuyrldhudoakitwhgwr.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_P_iX0-BEI7YyRth833IpBQ_z5oYEtny';
 
-    const SUPABASE_PUBLISHABLE_KEY =
-      'sb_publishable_P_iX0-BEI7YyRth833IpBQ_z5oYEtny';
+  window.supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
 
-    /*
-      IMPORTANT:
-      app.js uses the variable name "supabase".
-      Therefore we create the client using that exact name.
-    */
-    const supabase = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_PUBLISHABLE_KEY
-    );
-  </script>
-
+  // Make the client available to app.js
+  window.supabaseApp = window.supabaseClient;
+</script>
   <!-- Font Awesome -->
   <link
     rel="stylesheet"
