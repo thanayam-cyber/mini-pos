@@ -2136,98 +2136,80 @@ function removeFromCart(index) {
 // POS - CHECKOUT
 // ============================================================
 
-async function checkoutPos(
-  payment_method
-) {
+async function checkoutPos(payment_method) {
 
   if (cart.length === 0) {
-
-    alert(
-      'Cart is empty.'
-    );
-
+    alert('Cart is empty.');
     return;
   }
 
-
-  const total =
-    cart.reduce(
-      function (sum, item) {
-
-        return sum +
-          item.price *
-          item.quantity;
-
-      },
-      0
-    );
-
+  const total = cart.reduce(
+    function (sum, item) {
+      return sum + item.price * item.quantity;
+    },
+    0
+  );
 
   let reservationId = null;
-
 
   if (payment_method === 'room') {
 
     if (!window.currentGuest) {
-
       alert(
         'Please select or check in a guest before charging to room.'
       );
-
       return;
     }
 
-
     if (!isPostingAllowed()) {
-
       alert(
         'The selected guest is not currently in-house.'
       );
-
       return;
     }
 
-
-    reservationId =
-      window.currentGuest.id;
+    reservationId = window.currentGuest.id;
   }
-
 
   try {
 
-    const supabase =
-      getSupabase();
+    const supabase = getSupabase();
 
+    if (!supabase) {
+      alert('Supabase is not connected.');
+      return;
+    }
 
     const order = {
 
-      reservation_id:
-        reservationId,
+      items: cart,
 
-      items:
-        cart,
+      amount: total,
 
-      total:
-        total,
+      date: new Date()
+        .toISOString()
+        .split('T')[0],
 
-      payment_method: paymentType === 'room'
+      payment_method:
+        payment_method === 'room'
           ? 'Room Charge'
           : 'Direct Pay'
-
     };
 
-
     const {
+      data,
       error
-    } =
-      await supabase
-        .from('pos_orders')
-        .insert([
-          order
-        ]);
-
+    } = await supabase
+      .from('pos_orders')
+      .insert([order])
+      .select();
 
     if (error) {
+
+      console.error(
+        'POS order save error:',
+        error
+      );
 
       alert(
         'Could not save POS order.\n\n' +
@@ -2237,27 +2219,32 @@ async function checkoutPos(
       return;
     }
 
+    console.log(
+      'POS order saved:',
+      data
+    );
+
+    /*
+      If this is a room charge,
+      attach the charge to the current guest folio
+      if your existing folio system supports it.
+    */
 
     alert(
       `POS payment recorded.\n\nTotal: ${formatMoney(total)}`
     );
 
-
     cart = [];
 
     renderCart();
 
-
     await updateDashboard();
-
 
     if (window.currentGuest) {
       await updateFolio();
     }
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(
       'POS error:',
@@ -2266,11 +2253,10 @@ async function checkoutPos(
 
     alert(
       'Unexpected error:\n\n' +
-      error.message
+      (error.message || String(error))
     );
   }
 }
-
 
 // ============================================================
 // QUICK ADD EXPERIENCE
