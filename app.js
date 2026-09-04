@@ -3,12 +3,11 @@
 // SUPABASE CLOUD DATABASE VERSION
 // ============================================================
 //
-// IMPORTANT:
 // Supabase client is created in index.html:
 //
-// const supabase = window.supabase.createClient(...);
+// window.supabaseApp
 //
-// DO NOT create another "const supabase" in this file.
+// DO NOT create another Supabase client in this file.
 // ============================================================
 
 
@@ -50,14 +49,38 @@ const RATE_MATRIX = {
 // ============================================================
 
 let currentFilter = 'all';
-
 let cart = [];
-
 let realtimeStarted = false;
 
 window.currentGuest = null;
-
 window.reservations = [];
+
+
+// ============================================================
+// SUPABASE CLIENT
+// ============================================================
+
+function getSupabase() {
+  return window.supabaseApp || null;
+}
+
+
+function isSupabaseReady() {
+
+  const client = getSupabase();
+
+  if (!client) {
+    console.error('Supabase client is not available.');
+    return false;
+  }
+
+  if (!client.auth) {
+    console.error('Supabase Auth is not available.');
+    return false;
+  }
+
+  return true;
+}
 
 
 // ============================================================
@@ -65,12 +88,11 @@ window.reservations = [];
 // ============================================================
 
 function getTodayString() {
+
   const today = new Date();
 
   const year = today.getFullYear();
-
   const month = String(today.getMonth() + 1).padStart(2, '0');
-
   const day = String(today.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
@@ -78,14 +100,13 @@ function getTodayString() {
 
 
 function getTomorrowString() {
+
   const tomorrow = new Date();
 
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   const year = tomorrow.getFullYear();
-
   const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-
   const day = String(tomorrow.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
@@ -93,10 +114,10 @@ function getTomorrowString() {
 
 
 function getCurrentMonthString() {
+
   const today = new Date();
 
   const year = today.getFullYear();
-
   const month = String(today.getMonth() + 1).padStart(2, '0');
 
   return `${year}-${month}`;
@@ -104,6 +125,7 @@ function getCurrentMonthString() {
 
 
 function formatDate(dateString) {
+
   if (!dateString) return '';
 
   const date = new Date(`${dateString}T00:00:00`);
@@ -121,29 +143,8 @@ function formatDate(dateString) {
 
 
 function formatMoney(amount) {
+
   return `$ ${Number(amount || 0).toFixed(2)}`;
-}
-
-
-// ============================================================
-// SUPABASE CHECK
-// ============================================================
-
-function isSupabaseReady() {
-
-  if (typeof supabase === 'undefined') {
-    console.error('Supabase variable is not defined.');
-
-    return false;
-  }
-
-  if (!supabase.auth) {
-    console.error('Supabase Auth is not available.');
-
-    return false;
-  }
-
-  return true;
 }
 
 
@@ -153,7 +154,8 @@ function isSupabaseReady() {
 
 function showLoginScreen() {
 
-  const overlay = document.getElementById('loginOverlay');
+  const overlay =
+    document.getElementById('loginOverlay');
 
   if (overlay) {
     overlay.classList.remove('hidden');
@@ -163,7 +165,8 @@ function showLoginScreen() {
 
 function hideLoginScreen() {
 
-  const overlay = document.getElementById('loginOverlay');
+  const overlay =
+    document.getElementById('loginOverlay');
 
   if (overlay) {
     overlay.classList.add('hidden');
@@ -181,22 +184,27 @@ async function handleLogin(event) {
     event.preventDefault();
   }
 
-  const emailInput = document.getElementById('loginEmail');
+  const emailInput =
+    document.getElementById('loginEmail');
 
-  const passwordInput = document.getElementById('pinInput');
+  const passwordInput =
+    document.getElementById('pinInput');
 
-  const email = emailInput
-    ? emailInput.value.trim()
-    : '';
+  const email =
+    emailInput
+      ? emailInput.value.trim()
+      : '';
 
-  const password = passwordInput
-    ? passwordInput.value
-    : '';
-
+  const password =
+    passwordInput
+      ? passwordInput.value
+      : '';
 
   if (!email || !password) {
 
-    alert('Please enter your email address and password.');
+    alert(
+      'Please enter your email address and password.'
+    );
 
     return;
   }
@@ -206,7 +214,7 @@ async function handleLogin(event) {
 
     alert(
       'Supabase is not initialized.\n\n' +
-      'Please make sure the Supabase script and connection are above app.js in index.html.'
+      'Please check the Supabase connection in index.html.'
     );
 
     return;
@@ -216,12 +224,15 @@ async function handleLogin(event) {
   const button =
     event &&
     event.target &&
-    event.target.querySelector('button[type="submit"]');
+    event.target.querySelector(
+      'button[type="submit"]'
+    );
 
 
-  const originalText = button
-    ? button.textContent
-    : 'Unlock Dashboard';
+  const originalText =
+    button
+      ? button.textContent
+      : 'Unlock Dashboard';
 
 
   try {
@@ -229,17 +240,23 @@ async function handleLogin(event) {
     if (button) {
 
       button.disabled = true;
-
       button.textContent = 'Connecting...';
     }
 
 
-    console.log('Attempting Supabase login...');
+    console.log(
+      'Attempting Supabase login...'
+    );
 
-    console.log('Supabase URL:', SUPABASE_URL);
+
+    const supabase =
+      getSupabase();
 
 
-    const { data, error } =
+    const {
+      data,
+      error
+    } =
       await supabase.auth.signInWithPassword({
         email: email,
         password: password
@@ -248,7 +265,10 @@ async function handleLogin(event) {
 
     if (error) {
 
-      console.error('Supabase login error:', error);
+      console.error(
+        'Supabase login error:',
+        error
+      );
 
       alert(
         'LOGIN FAILED\n\n' +
@@ -261,20 +281,22 @@ async function handleLogin(event) {
 
     if (!data || !data.session) {
 
-      console.error('Login succeeded but no session was returned.');
-
       alert(
         'Login did not create a session.\n\n' +
-        'Please check the Supabase Authentication settings.'
+        'Please check your Supabase Authentication settings.'
       );
 
       return;
     }
 
 
-    console.log('Supabase login successful.');
+    console.log(
+      'Supabase login successful.'
+    );
+
 
     hideLoginScreen();
+
 
     await initApp();
 
@@ -282,7 +304,10 @@ async function handleLogin(event) {
 
   catch (error) {
 
-    console.error('Unexpected login error:', error);
+    console.error(
+      'Unexpected login error:',
+      error
+    );
 
     alert(
       'UNEXPECTED ERROR\n\n' +
@@ -296,7 +321,6 @@ async function handleLogin(event) {
     if (button) {
 
       button.disabled = false;
-
       button.textContent = originalText;
     }
   }
@@ -313,6 +337,9 @@ async function logout() {
 
     if (isSupabaseReady()) {
 
+      const supabase =
+        getSupabase();
+
       await supabase.auth.signOut();
     }
 
@@ -320,13 +347,18 @@ async function logout() {
 
   catch (error) {
 
-    console.error('Logout error:', error);
+    console.error(
+      'Logout error:',
+      error
+    );
   }
 
 
   window.currentGuest = null;
 
   cart = [];
+
+  renderCart();
 
   showLoginScreen();
 }
@@ -340,7 +372,9 @@ async function checkAuthentication() {
 
   if (!isSupabaseReady()) {
 
-    console.error('Supabase is not ready.');
+    console.error(
+      'Supabase is not ready.'
+    );
 
     showLoginScreen();
 
@@ -350,15 +384,23 @@ async function checkAuthentication() {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const {
       data,
       error
-    } = await supabase.auth.getSession();
+    } =
+      await supabase.auth.getSession();
 
 
     if (error) {
 
-      console.error('Session check error:', error);
+      console.error(
+        'Session check error:',
+        error
+      );
 
       showLoginScreen();
 
@@ -382,7 +424,10 @@ async function checkAuthentication() {
 
   catch (error) {
 
-    console.error('Authentication check failed:', error);
+    console.error(
+      'Authentication check failed:',
+      error
+    );
 
     showLoginScreen();
 
@@ -395,25 +440,32 @@ async function checkAuthentication() {
 // START APPLICATION
 // ============================================================
 
-document.addEventListener('DOMContentLoaded', async function () {
+document.addEventListener(
+  'DOMContentLoaded',
+  async function () {
 
-  console.log('Wild Hasthi POS starting...');
-
-  console.log(
-    'Supabase available:',
-    typeof supabase !== 'undefined'
-  );
-
-
-  const authenticated = await checkAuthentication();
+    console.log(
+      'Wild Hasthi POS starting...'
+    );
 
 
-  if (authenticated) {
+    console.log(
+      'Supabase client available:',
+      !!window.supabaseApp
+    );
 
-    await initApp();
+
+    const authenticated =
+      await checkAuthentication();
+
+
+    if (authenticated) {
+
+      await initApp();
+    }
+
   }
-
-});
+);
 
 
 // ============================================================
@@ -422,36 +474,49 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 async function initApp() {
 
-  console.log('Initializing Wild Hasthi POS...');
+  console.log(
+    'Initializing Wild Hasthi POS...'
+  );
 
 
-  const today = getTodayString();
+  const today =
+    getTodayString();
 
-  const tomorrow = getTomorrowString();
+  const tomorrow =
+    getTomorrowString();
 
 
   const dateDisplay =
-    document.getElementById('currentDateDisplay');
+    document.getElementById(
+      'currentDateDisplay'
+    );
 
 
   if (dateDisplay) {
 
     dateDisplay.textContent =
-      new Date().toLocaleDateString('en-GB', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      }).toUpperCase();
+      new Date().toLocaleDateString(
+        'en-GB',
+        {
+          weekday: 'long',
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        }
+      ).toUpperCase();
   }
 
 
   const checkIn =
-    document.getElementById('resCheckIn');
+    document.getElementById(
+      'resCheckIn'
+    );
 
 
   const checkOut =
-    document.getElementById('resCheckOut');
+    document.getElementById(
+      'resCheckOut'
+    );
 
 
   if (checkIn && !checkIn.value) {
@@ -477,7 +542,10 @@ async function initApp() {
 
   setupRealtime();
 
-  console.log('Wild Hasthi POS ready.');
+
+  console.log(
+    'Wild Hasthi POS ready.'
+  );
 }
 
 
@@ -499,8 +567,14 @@ function setupRealtime() {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     supabase
-      .channel('wild-hasthi-live-updates')
+      .channel(
+        'wild-hasthi-live-updates'
+      )
 
       .on(
         'postgres_changes',
@@ -510,8 +584,6 @@ function setupRealtime() {
           table: 'reservations'
         },
         async function () {
-
-          console.log('Reservations updated.');
 
           await loadReservations();
 
@@ -528,9 +600,11 @@ function setupRealtime() {
         },
         async function () {
 
-          console.log('POS orders updated.');
-
           await updateDashboard();
+
+          if (window.currentGuest) {
+            await updateFolio();
+          }
         }
       )
 
@@ -543,19 +617,23 @@ function setupRealtime() {
         },
         async function () {
 
-          console.log('Experiences updated.');
-
           await updateDashboard();
+
+          if (window.currentGuest) {
+            await updateFolio();
+          }
         }
       )
 
-      .subscribe(function (status) {
+      .subscribe(
+        function (status) {
 
-        console.log(
-          'Realtime status:',
-          status
-        );
-      });
+          console.log(
+            'Realtime status:',
+            status
+          );
+        }
+      );
 
 
     realtimeStarted = true;
@@ -579,13 +657,20 @@ function setupRealtime() {
 function switchTab(tabName) {
 
   const views =
-    document.querySelectorAll('.tab-view');
+    document.querySelectorAll(
+      '.tab-view'
+    );
 
 
-  views.forEach(function (view) {
+  views.forEach(
+    function (view) {
 
-    view.classList.add('hidden');
-  });
+      view.classList.add(
+        'hidden'
+      );
+
+    }
+  );
 
 
   const selectedView =
@@ -596,25 +681,32 @@ function switchTab(tabName) {
 
   if (selectedView) {
 
-    selectedView.classList.remove('hidden');
+    selectedView.classList.remove(
+      'hidden'
+    );
   }
 
 
   const buttons =
-    document.querySelectorAll('.nav-btn');
-
-
-  buttons.forEach(function (button) {
-
-    button.classList.remove(
-      'bg-slate-800',
-      'text-white'
+    document.querySelectorAll(
+      '.nav-btn'
     );
 
-    button.classList.add(
-      'text-slate-400'
-    );
-  });
+
+  buttons.forEach(
+    function (button) {
+
+      button.classList.remove(
+        'bg-slate-800',
+        'text-white'
+      );
+
+      button.classList.add(
+        'text-slate-400'
+      );
+
+    }
+  );
 
 
   const selectedButton =
@@ -647,17 +739,21 @@ function switchTab(tabName) {
     safari: 'Extra Experiences',
 
     folio: 'Guest Folio'
+
   };
 
 
   const pageTitle =
-    document.getElementById('pageTitle');
+    document.getElementById(
+      'pageTitle'
+    );
 
 
   if (pageTitle) {
 
     pageTitle.textContent =
-      titles[tabName] || 'Dashboard';
+      titles[tabName] ||
+      'Dashboard';
   }
 
 
@@ -686,7 +782,9 @@ function openModal(id) {
 
   if (modal) {
 
-    modal.classList.remove('hidden');
+    modal.classList.remove(
+      'hidden'
+    );
 
     updateCalculatedRate();
   }
@@ -701,7 +799,9 @@ function closeModal(id) {
 
   if (modal) {
 
-    modal.classList.add('hidden');
+    modal.classList.add(
+      'hidden'
+    );
   }
 }
 
@@ -713,20 +813,28 @@ function closeModal(id) {
 function updateCalculatedRate() {
 
   const selection =
-    document.getElementById('resSelection');
+    document.getElementById(
+      'resSelection'
+    );
 
 
   const packageSelect =
-    document.getElementById('resPackage');
+    document.getElementById(
+      'resPackage'
+    );
 
 
   const rateInput =
-    document.getElementById('resRate');
+    document.getElementById(
+      'resRate'
+    );
 
 
-  if (!selection ||
-      !packageSelect ||
-      !rateInput) {
+  if (
+    !selection ||
+    !packageSelect ||
+    !rateInput
+  ) {
 
     return;
   }
@@ -753,7 +861,9 @@ function updateCalculatedRate() {
 
 
   const rate =
-    Number(row[packageType] || 0);
+    Number(
+      row[packageType] || 0
+    );
 
 
   rateInput.value = rate;
@@ -782,40 +892,56 @@ async function saveReservation(event) {
 
 
   const guestName =
-    document.getElementById('resGuestName')?.value.trim();
+    document.getElementById(
+      'resGuestName'
+    )?.value.trim();
 
 
   const checkIn =
-    document.getElementById('resCheckIn')?.value;
+    document.getElementById(
+      'resCheckIn'
+    )?.value;
 
 
   const checkOut =
-    document.getElementById('resCheckOut')?.value;
+    document.getElementById(
+      'resCheckOut'
+    )?.value;
 
 
   const selection =
-    document.getElementById('resSelection')?.value;
+    document.getElementById(
+      'resSelection'
+    )?.value;
 
 
   const packageType =
-    document.getElementById('resPackage')?.value;
+    document.getElementById(
+      'resPackage'
+    )?.value;
 
 
   const safari =
-    document.getElementById('resSafari')?.value;
+    document.getElementById(
+      'resSafari'
+    )?.value;
 
 
   const rate =
     Number(
-      document.getElementById('resRate')?.value || 0
+      document.getElementById(
+        'resRate'
+      )?.value || 0
     );
 
 
-  if (!guestName ||
-      !checkIn ||
-      !checkOut ||
-      !selection ||
-      !packageType) {
+  if (
+    !guestName ||
+    !checkIn ||
+    !checkOut ||
+    !selection ||
+    !packageType
+  ) {
 
     alert(
       'Please complete all required reservation details.'
@@ -854,22 +980,24 @@ async function saveReservation(event) {
       rate: rate,
 
       status: 'Confirmed'
+
     };
 
 
-    console.log(
-      'Saving reservation:',
-      reservation
-    );
+    const supabase =
+      getSupabase();
 
 
     const {
       data,
       error
-    } = await supabase
-      .from('reservations')
-      .insert([reservation])
-      .select();
+    } =
+      await supabase
+        .from('reservations')
+        .insert([
+          reservation
+        ])
+        .select();
 
 
     if (error) {
@@ -900,7 +1028,9 @@ async function saveReservation(event) {
 
 
     const form =
-      document.getElementById('reservationForm');
+      document.getElementById(
+        'reservationForm'
+      );
 
 
     if (form) {
@@ -908,23 +1038,41 @@ async function saveReservation(event) {
     }
 
 
-    document.getElementById('resCheckIn').value =
-      getTodayString();
+    const checkInInput =
+      document.getElementById(
+        'resCheckIn'
+      );
 
 
-    document.getElementById('resCheckOut').value =
-      getTomorrowString();
+    const checkOutInput =
+      document.getElementById(
+        'resCheckOut'
+      );
+
+
+    if (checkInInput) {
+      checkInInput.value =
+        getTodayString();
+    }
+
+
+    if (checkOutInput) {
+      checkOutInput.value =
+        getTomorrowString();
+    }
 
 
     updateCalculatedRate();
 
-    closeModal('modalNewReservation');
+
+    closeModal(
+      'modalNewReservation'
+    );
 
 
     await loadReservations();
 
     await updateDashboard();
-
 
   }
 
@@ -956,15 +1104,23 @@ async function loadReservations() {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const {
       data,
       error
-    } = await supabase
-      .from('reservations')
-      .select('*')
-      .order('check_in', {
-        ascending: true
-      });
+    } =
+      await supabase
+        .from('reservations')
+        .select('*')
+        .order(
+          'check_in',
+          {
+            ascending: true
+          }
+        );
 
 
     if (error) {
@@ -973,6 +1129,7 @@ async function loadReservations() {
         'Load reservations error:',
         error
       );
+
 
       const body =
         document.getElementById(
@@ -1008,7 +1165,6 @@ async function loadReservations() {
 
     renderReservations();
 
-
   }
 
   catch (error) {
@@ -1022,13 +1178,14 @@ async function loadReservations() {
 
 
 // ============================================================
-// MAP RESERVATION VALUES
+// RESERVATION STATUS HELPERS
 // ============================================================
 
 function getReservationStatus(reservation) {
 
   return String(
-    reservation?.status || 'Confirmed'
+    reservation?.status ||
+    'Confirmed'
   ).toLowerCase();
 }
 
@@ -1039,7 +1196,9 @@ function isCancelled(reservation) {
     'cancelled',
     'canceled'
   ].includes(
-    getReservationStatus(reservation)
+    getReservationStatus(
+      reservation
+    )
   );
 }
 
@@ -1051,7 +1210,9 @@ function isCheckedOut(reservation) {
     'checked_out',
     'checkedout'
   ].includes(
-    getReservationStatus(reservation)
+    getReservationStatus(
+      reservation
+    )
   );
 }
 
@@ -1059,7 +1220,9 @@ function isCheckedOut(reservation) {
 function isInHouse(reservation) {
 
   const status =
-    getReservationStatus(reservation);
+    getReservationStatus(
+      reservation
+    );
 
 
   if (
@@ -1107,7 +1270,9 @@ function isFutureBooking(reservation) {
     getTodayString();
 
 
-  return reservation.check_in > today;
+  return (
+    reservation.check_in > today
+  );
 }
 
 
@@ -1129,30 +1294,33 @@ function filterReservations(filter) {
   ];
 
 
-  filters.forEach(function (name) {
+  filters.forEach(
+    function (name) {
 
-    const button =
-      document.getElementById(
-        `filter-${name}`
+      const button =
+        document.getElementById(
+          `filter-${name}`
+        );
+
+
+      if (!button) {
+        return;
+      }
+
+
+      button.classList.remove(
+        'bg-slate-900',
+        'text-white'
       );
 
 
-    if (!button) {
-      return;
+      button.classList.add(
+        'bg-slate-100',
+        'text-slate-700'
+      );
+
     }
-
-
-    button.classList.remove(
-      'bg-slate-900',
-      'text-white'
-    );
-
-
-    button.classList.add(
-      'bg-slate-100',
-      'text-slate-700'
-    );
-  });
+  );
 
 
   const active =
@@ -1167,6 +1335,7 @@ function filterReservations(filter) {
       'bg-slate-100',
       'text-slate-700'
     );
+
 
     active.classList.add(
       'bg-slate-900',
@@ -1197,7 +1366,9 @@ function renderReservations() {
 
 
   let reservations =
-    Array.isArray(window.reservations)
+    Array.isArray(
+      window.reservations
+    )
       ? [...window.reservations]
       : [];
 
@@ -1255,7 +1426,9 @@ function renderReservations() {
 
   body.innerHTML =
     reservations
-      .map(renderReservationRow)
+      .map(
+        renderReservationRow
+      )
       .join('');
 }
 
@@ -1264,14 +1437,19 @@ function renderReservations() {
 // RESERVATION ROW
 // ============================================================
 
-function renderReservationRow(reservation) {
+function renderReservationRow(
+  reservation
+) {
 
   const status =
-    getReservationStatus(reservation);
+    getReservationStatus(
+      reservation
+    );
 
 
   let statusLabel =
-    reservation.status || 'Confirmed';
+    reservation.status ||
+    'Confirmed';
 
 
   let statusClass =
@@ -1294,7 +1472,8 @@ function renderReservationRow(reservation) {
 
   else if (isInHouse(reservation)) {
 
-    statusLabel = 'In-House';
+    statusLabel =
+      'In-House';
 
     statusClass =
       'bg-emerald-100 text-emerald-800';
@@ -1427,13 +1606,11 @@ function renderReservationRow(reservation) {
       </td>
 
       <td class="p-4">
-
         <span
           class="px-2.5 py-1 rounded-full text-[10px] font-bold ${statusClass}"
         >
           ${escapeHtml(statusLabel)}
         </span>
-
       </td>
 
       <td class="p-4 text-center whitespace-nowrap">
@@ -1454,14 +1631,19 @@ async function directCheckIn(id) {
   const reservation =
     window.reservations.find(
       function (item) {
-        return String(item.id) === String(id);
+
+        return String(item.id) ===
+          String(id);
+
       }
     );
 
 
   if (!reservation) {
 
-    alert('Booking not found.');
+    alert(
+      'Booking not found.'
+    );
 
     return;
   }
@@ -1469,22 +1651,22 @@ async function directCheckIn(id) {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const {
       error
-    } = await supabase
-      .from('reservations')
-      .update({
-        status: 'in-house'
-      })
-      .eq('id', id);
+    } =
+      await supabase
+        .from('reservations')
+        .update({
+          status: 'in-house'
+        })
+        .eq('id', id);
 
 
     if (error) {
-
-      console.error(
-        'Check-in error:',
-        error
-      );
 
       alert(
         'Could not check in guest.\n\n' +
@@ -1495,12 +1677,10 @@ async function directCheckIn(id) {
     }
 
 
-    window.currentGuest =
-      reservation;
-
-
-    window.currentGuest.status =
-      'in-house';
+    window.currentGuest = {
+      ...reservation,
+      status: 'in-house'
+    };
 
 
     alert(
@@ -1513,15 +1693,16 @@ async function directCheckIn(id) {
     await updateDashboard();
 
 
-    switchTab('folio');
-
+    switchTab(
+      'folio'
+    );
 
   }
 
   catch (error) {
 
     console.error(
-      'Unexpected check-in error:',
+      'Check-in error:',
       error
     );
 
@@ -1542,14 +1723,19 @@ function selectGuestForFolio(id) {
   const reservation =
     window.reservations.find(
       function (item) {
-        return String(item.id) === String(id);
+
+        return String(item.id) ===
+          String(id);
+
       }
     );
 
 
   if (!reservation) {
 
-    alert('Booking not found.');
+    alert(
+      'Booking not found.'
+    );
 
     return;
   }
@@ -1559,7 +1745,9 @@ function selectGuestForFolio(id) {
     reservation;
 
 
-  switchTab('folio');
+  switchTab(
+    'folio'
+  );
 }
 
 
@@ -1571,22 +1759,22 @@ async function reopenReservation(id) {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const {
       error
-    } = await supabase
-      .from('reservations')
-      .update({
-        status: 'Confirmed'
-      })
-      .eq('id', id);
+    } =
+      await supabase
+        .from('reservations')
+        .update({
+          status: 'Confirmed'
+        })
+        .eq('id', id);
 
 
     if (error) {
-
-      console.error(
-        'Reopen error:',
-        error
-      );
 
       alert(
         'Could not reopen booking.\n\n' +
@@ -1597,7 +1785,9 @@ async function reopenReservation(id) {
     }
 
 
-    alert('Booking reopened successfully.');
+    alert(
+      'Booking reopened successfully.'
+    );
 
 
     await loadReservations();
@@ -1609,7 +1799,7 @@ async function reopenReservation(id) {
   catch (error) {
 
     console.error(
-      'Unexpected reopen error:',
+      'Reopen error:',
       error
     );
 
@@ -1640,22 +1830,22 @@ async function cancelBooking(id) {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const {
       error
-    } = await supabase
-      .from('reservations')
-      .update({
-        status: 'Cancelled'
-      })
-      .eq('id', id);
+    } =
+      await supabase
+        .from('reservations')
+        .update({
+          status: 'Cancelled'
+        })
+        .eq('id', id);
 
 
     if (error) {
-
-      console.error(
-        'Cancel booking error:',
-        error
-      );
 
       alert(
         'Could not cancel booking.\n\n' +
@@ -1666,7 +1856,19 @@ async function cancelBooking(id) {
     }
 
 
-    alert('Booking cancelled.');
+    if (
+      window.currentGuest &&
+      String(window.currentGuest.id) ===
+      String(id)
+    ) {
+
+      window.currentGuest = null;
+    }
+
+
+    alert(
+      'Booking cancelled.'
+    );
 
 
     await loadReservations();
@@ -1678,7 +1880,7 @@ async function cancelBooking(id) {
   catch (error) {
 
     console.error(
-      'Unexpected cancel error:',
+      'Cancel error:',
       error
     );
 
@@ -1709,20 +1911,20 @@ async function deleteBooking(id) {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const {
       error
-    } = await supabase
-      .from('reservations')
-      .delete()
-      .eq('id', id);
+    } =
+      await supabase
+        .from('reservations')
+        .delete()
+        .eq('id', id);
 
 
     if (error) {
-
-      console.error(
-        'Delete booking error:',
-        error
-      );
 
       alert(
         'Could not delete booking.\n\n' +
@@ -1733,7 +1935,19 @@ async function deleteBooking(id) {
     }
 
 
-    alert('Booking deleted.');
+    if (
+      window.currentGuest &&
+      String(window.currentGuest.id) ===
+      String(id)
+    ) {
+
+      window.currentGuest = null;
+    }
+
+
+    alert(
+      'Booking deleted.'
+    );
 
 
     await loadReservations();
@@ -1745,7 +1959,7 @@ async function deleteBooking(id) {
   catch (error) {
 
     console.error(
-      'Unexpected delete error:',
+      'Delete error:',
       error
     );
 
@@ -1761,12 +1975,18 @@ async function deleteBooking(id) {
 // POS - ADD TO CART
 // ============================================================
 
-function addToCart(itemName, price) {
+function addToCart(
+  itemName,
+  price
+) {
 
   const existing =
     cart.find(
       function (item) {
-        return item.name === itemName;
+
+        return item.name ===
+          itemName;
+
       }
     );
 
@@ -1786,6 +2006,7 @@ function addToCart(itemName, price) {
       price: Number(price),
 
       quantity: 1
+
     });
   }
 
@@ -1842,7 +2063,8 @@ function renderCart() {
       function (item, index) {
 
         const lineTotal =
-          item.price * item.quantity;
+          item.price *
+          item.quantity;
 
 
         return `
@@ -1886,9 +2108,11 @@ function renderCart() {
   const total =
     cart.reduce(
       function (sum, item) {
+
         return sum +
           item.price *
           item.quantity;
+
       },
       0
     );
@@ -1908,7 +2132,10 @@ function renderCart() {
 
 function removeFromCart(index) {
 
-  cart.splice(index, 1);
+  cart.splice(
+    index,
+    1
+  );
 
   renderCart();
 }
@@ -1918,11 +2145,15 @@ function removeFromCart(index) {
 // POS - CHECKOUT
 // ============================================================
 
-async function checkoutPos(paymentType) {
+async function checkoutPos(
+  paymentType
+) {
 
   if (cart.length === 0) {
 
-    alert('Cart is empty.');
+    alert(
+      'Cart is empty.'
+    );
 
     return;
   }
@@ -1956,6 +2187,16 @@ async function checkoutPos(paymentType) {
     }
 
 
+    if (!isPostingAllowed()) {
+
+      alert(
+        'The selected guest is not currently in-house.'
+      );
+
+      return;
+    }
+
+
     reservationId =
       window.currentGuest.id;
   }
@@ -1963,34 +2204,40 @@ async function checkoutPos(paymentType) {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const order = {
 
-      reservation_id: reservationId,
+      reservation_id:
+        reservationId,
 
-      items: cart,
+      items:
+        cart,
 
-      total: total,
+      total:
+        total,
 
       payment_type:
         paymentType === 'room'
           ? 'Room Charge'
           : 'Direct Pay'
+
     };
 
 
     const {
       error
-    } = await supabase
-      .from('pos_orders')
-      .insert([order]);
+    } =
+      await supabase
+        .from('pos_orders')
+        .insert([
+          order
+        ]);
 
 
     if (error) {
-
-      console.error(
-        'POS checkout error:',
-        error
-      );
 
       alert(
         'Could not save POS order.\n\n' +
@@ -2014,12 +2261,16 @@ async function checkoutPos(paymentType) {
     await updateDashboard();
 
 
+    if (window.currentGuest) {
+      await updateFolio();
+    }
+
   }
 
   catch (error) {
 
     console.error(
-      'Unexpected POS error:',
+      'POS error:',
       error
     );
 
@@ -2035,7 +2286,10 @@ async function checkoutPos(paymentType) {
 // QUICK ADD EXPERIENCE
 // ============================================================
 
-async function quickAddExperience(name, price) {
+async function quickAddExperience(
+  name,
+  price
+) {
 
   if (!window.currentGuest) {
 
@@ -2043,17 +2297,15 @@ async function quickAddExperience(name, price) {
       'Please check in or select an active guest first.'
     );
 
-    switchTab('reservations');
+    switchTab(
+      'reservations'
+    );
 
     return;
   }
 
 
-  const allowed =
-    isPostingAllowed();
-
-
-  if (!allowed) {
+  if (!isPostingAllowed()) {
 
     alert(
       'Extra charges can only be posted to an active in-house guest.'
@@ -2065,6 +2317,10 @@ async function quickAddExperience(name, price) {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const experience = {
 
       reservation_id:
@@ -2075,22 +2331,21 @@ async function quickAddExperience(name, price) {
 
       amount:
         Number(price)
+
     };
 
 
     const {
       error
-    } = await supabase
-      .from('experiences')
-      .insert([experience]);
+    } =
+      await supabase
+        .from('experiences')
+        .insert([
+          experience
+        ]);
 
 
     if (error) {
-
-      console.error(
-        'Experience error:',
-        error
-      );
 
       alert(
         'Could not add extra charge.\n\n' +
@@ -2108,15 +2363,14 @@ async function quickAddExperience(name, price) {
 
     await updateDashboard();
 
-    updateFolio();
-
+    await updateFolio();
 
   }
 
   catch (error) {
 
     console.error(
-      'Unexpected experience error:',
+      'Experience error:',
       error
     );
 
@@ -2190,11 +2444,14 @@ async function updateFolio() {
 
 
   let posAmount = 0;
-
   let expAmount = 0;
 
 
   try {
+
+    const supabase =
+      getSupabase();
+
 
     const posResult =
       await supabase
@@ -2204,12 +2461,8 @@ async function updateFolio() {
 
     if (!posResult.error) {
 
-      const orders =
-        posResult.data || [];
-
-
       posAmount =
-        orders
+        (posResult.data || [])
           .filter(
             function (order) {
 
@@ -2218,6 +2471,7 @@ async function updateFolio() {
               ) === String(
                 guest.id
               );
+
             }
           )
           .reduce(
@@ -2242,12 +2496,8 @@ async function updateFolio() {
 
     if (!expResult.error) {
 
-      const experiences =
-        expResult.data || [];
-
-
       expAmount =
-        experiences
+        (expResult.data || [])
           .filter(
             function (experience) {
 
@@ -2256,6 +2506,7 @@ async function updateFolio() {
               ) === String(
                 guest.id
               );
+
             }
           )
           .reduce(
@@ -2325,7 +2576,9 @@ async function performFinalCheckout() {
       'Please select an active guest first.'
     );
 
-    switchTab('reservations');
+    switchTab(
+      'reservations'
+    );
 
     return;
   }
@@ -2348,22 +2601,22 @@ async function performFinalCheckout() {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const {
       error
-    } = await supabase
-      .from('reservations')
-      .update({
-        status: 'checked-out'
-      })
-      .eq('id', guest.id);
+    } =
+      await supabase
+        .from('reservations')
+        .update({
+          status: 'checked-out'
+        })
+        .eq('id', guest.id);
 
 
     if (error) {
-
-      console.error(
-        'Final checkout error:',
-        error
-      );
 
       alert(
         'Could not check out guest.\n\n' +
@@ -2374,13 +2627,13 @@ async function performFinalCheckout() {
     }
 
 
-    /*
-      Print BEFORE clearing currentGuest.
-    */
-    await printFolioInvoice(guest);
+    await printFolioInvoice(
+      guest
+    );
 
 
-    window.currentGuest = null;
+    window.currentGuest =
+      null;
 
 
     await loadReservations();
@@ -2394,7 +2647,7 @@ async function performFinalCheckout() {
   catch (error) {
 
     console.error(
-      'Unexpected final checkout error:',
+      'Checkout error:',
       error
     );
 
@@ -2410,7 +2663,9 @@ async function performFinalCheckout() {
 // PRINT FOLIO INVOICE
 // ============================================================
 
-async function printFolioInvoice(reservationOverride = null) {
+async function printFolioInvoice(
+  reservationOverride = null
+) {
 
   const guest =
     reservationOverride ||
@@ -2428,15 +2683,17 @@ async function printFolioInvoice(reservationOverride = null) {
 
 
   let posAmount = 0;
-
   let expAmount = 0;
 
   let posRows = '';
-
   let expRows = '';
 
 
   try {
+
+    const supabase =
+      getSupabase();
+
 
     const posResult =
       await supabase
@@ -2456,6 +2713,7 @@ async function printFolioInvoice(reservationOverride = null) {
               ) === String(
                 guest.id
               );
+
             }
           );
 
@@ -2487,6 +2745,7 @@ async function printFolioInvoice(reservationOverride = null) {
                   function (item) {
 
                     return `${item.name} × ${item.quantity}`;
+
                   }
                 )
                 .join(', ');
@@ -2495,7 +2754,10 @@ async function printFolioInvoice(reservationOverride = null) {
 
           posRows += `
             <tr>
-              <td>${escapeHtml(description)}</td>
+              <td>
+                ${escapeHtml(description)}
+              </td>
+
               <td style="text-align:right;">
                 ${formatMoney(amount)}
               </td>
@@ -2524,6 +2786,7 @@ async function printFolioInvoice(reservationOverride = null) {
               ) === String(
                 guest.id
               );
+
             }
           );
 
@@ -2542,10 +2805,12 @@ async function printFolioInvoice(reservationOverride = null) {
 
           expRows += `
             <tr>
-              <td>${escapeHtml(
-                experience.experience_name ||
-                'Extra Experience'
-              )}</td>
+              <td>
+                ${escapeHtml(
+                  experience.experience_name ||
+                  'Extra Experience'
+                )}
+              </td>
 
               <td style="text-align:right;">
                 ${formatMoney(amount)}
@@ -2600,7 +2865,6 @@ async function printFolioInvoice(reservationOverride = null) {
 
 
   invoiceWindow.document.write(`
-
     <!DOCTYPE html>
 
     <html>
@@ -2677,7 +2941,6 @@ async function printFolioInvoice(reservationOverride = null) {
 
     </head>
 
-
     <body>
 
       <div class="header">
@@ -2699,10 +2962,7 @@ async function printFolioInvoice(reservationOverride = null) {
 
       <div class="guest">
 
-        <strong>
-          Guest:
-        </strong>
-
+        <strong>Guest:</strong>
         ${escapeHtml(
           guest.guest_name ||
           guest.name ||
@@ -2711,26 +2971,21 @@ async function printFolioInvoice(reservationOverride = null) {
 
         <br>
 
-        <strong>
-          Check-In:
-        </strong>
-
-        ${formatDate(guest.check_in)}
-
-        <br>
-
-        <strong>
-          Check-Out:
-        </strong>
-
-        ${formatDate(guest.check_out)}
+        <strong>Check-In:</strong>
+        ${formatDate(
+          guest.check_in
+        )}
 
         <br>
 
-        <strong>
-          Occupancy:
-        </strong>
+        <strong>Check-Out:</strong>
+        ${formatDate(
+          guest.check_out
+        )}
 
+        <br>
+
+        <strong>Occupancy:</strong>
         ${escapeHtml(
           guest.occupancy ||
           '-'
@@ -2738,10 +2993,7 @@ async function printFolioInvoice(reservationOverride = null) {
 
         <br>
 
-        <strong>
-          Package:
-        </strong>
-
+        <strong>Package:</strong>
         ${escapeHtml(
           guest.package ||
           '-'
@@ -2763,7 +3015,9 @@ async function printFolioInvoice(reservationOverride = null) {
           </td>
 
           <td style="text-align:right;">
-            ${formatMoney(accommodation)}
+            ${formatMoney(
+              accommodation
+            )}
           </td>
 
         </tr>
@@ -2777,16 +3031,20 @@ async function printFolioInvoice(reservationOverride = null) {
 
       <table>
 
-        ${posRows || `
-          <tr>
-            <td>
-              No POS charges
-            </td>
-            <td style="text-align:right;">
-              ${formatMoney(0)}
-            </td>
-          </tr>
-        `}
+        ${
+          posRows ||
+          `
+            <tr>
+              <td>
+                No POS charges
+              </td>
+
+              <td style="text-align:right;">
+                ${formatMoney(0)}
+              </td>
+            </tr>
+          `
+        }
 
       </table>
 
@@ -2797,16 +3055,20 @@ async function printFolioInvoice(reservationOverride = null) {
 
       <table>
 
-        ${expRows || `
-          <tr>
-            <td>
-              No extra experiences
-            </td>
-            <td style="text-align:right;">
-              ${formatMoney(0)}
-            </td>
-          </tr>
-        `}
+        ${
+          expRows ||
+          `
+            <tr>
+              <td>
+                No extra experiences
+              </td>
+
+              <td style="text-align:right;">
+                ${formatMoney(0)}
+              </td>
+            </tr>
+          `
+        }
 
       </table>
 
@@ -2829,16 +3091,13 @@ async function printFolioInvoice(reservationOverride = null) {
 
       </div>
 
-
     </body>
 
     </html>
-
   `);
 
 
   invoiceWindow.document.close();
-
 
   invoiceWindow.focus();
 
@@ -2865,13 +3124,15 @@ async function printDailyRevenueReport() {
 
 
   let roomRevenue = 0;
-
   let posRevenue = 0;
-
   let expRevenue = 0;
 
 
   try {
+
+    const supabase =
+      getSupabase();
+
 
     const reservationsResult =
       await supabase
@@ -2888,8 +3149,11 @@ async function printDailyRevenueReport() {
 
               return (
                 reservation.check_in === today &&
-                !isCancelled(reservation)
+                !isCancelled(
+                  reservation
+                )
               );
+
             }
           )
           .reduce(
@@ -2923,9 +3187,11 @@ async function printDailyRevenueReport() {
                 order.created_at ||
                 order.createdAt;
 
-
               return created &&
-                String(created).slice(0, 10) === today;
+                String(
+                  created
+                ).slice(0, 10) === today;
+
             }
           )
           .reduce(
@@ -2959,9 +3225,11 @@ async function printDailyRevenueReport() {
                 experience.created_at ||
                 experience.createdAt;
 
-
               return created &&
-                String(created).slice(0, 10) === today;
+                String(
+                  created
+                ).slice(0, 10) === today;
+
             }
           )
           .reduce(
@@ -3009,13 +3277,15 @@ async function printMonthlyRevenueReport() {
 
 
   let roomRevenue = 0;
-
   let posRevenue = 0;
-
   let expRevenue = 0;
 
 
   try {
+
+    const supabase =
+      getSupabase();
+
 
     const reservationsResult =
       await supabase
@@ -3034,8 +3304,11 @@ async function printMonthlyRevenueReport() {
                 String(
                   reservation.check_in || ''
                 ).slice(0, 7) === month &&
-                !isCancelled(reservation)
+                !isCancelled(
+                  reservation
+                )
               );
+
             }
           )
           .reduce(
@@ -3069,9 +3342,11 @@ async function printMonthlyRevenueReport() {
                 order.created_at ||
                 order.createdAt;
 
-
               return created &&
-                String(created).slice(0, 7) === month;
+                String(
+                  created
+                ).slice(0, 7) === month;
+
             }
           )
           .reduce(
@@ -3105,9 +3380,11 @@ async function printMonthlyRevenueReport() {
                 experience.created_at ||
                 experience.createdAt;
 
-
               return created &&
-                String(created).slice(0, 7) === month;
+                String(
+                  created
+                ).slice(0, 7) === month;
+
             }
           )
           .reduce(
@@ -3181,7 +3458,6 @@ function printRevenueReport(
 
 
   reportWindow.document.write(`
-
     <!DOCTYPE html>
 
     <html>
@@ -3237,7 +3513,6 @@ function printRevenueReport(
 
     </head>
 
-
     <body>
 
       <h1>
@@ -3256,6 +3531,7 @@ function printRevenueReport(
       <table>
 
         <tr>
+
           <td>
             Room Packages
           </td>
@@ -3263,10 +3539,12 @@ function printRevenueReport(
           <td style="text-align:right;">
             ${formatMoney(room)}
           </td>
+
         </tr>
 
 
         <tr>
+
           <td>
             Restaurant / POS
           </td>
@@ -3274,10 +3552,12 @@ function printRevenueReport(
           <td style="text-align:right;">
             ${formatMoney(pos)}
           </td>
+
         </tr>
 
 
         <tr>
+
           <td>
             Extra Experiences
           </td>
@@ -3285,6 +3565,7 @@ function printRevenueReport(
           <td style="text-align:right;">
             ${formatMoney(exp)}
           </td>
+
         </tr>
 
       </table>
@@ -3304,16 +3585,13 @@ function printRevenueReport(
 
       </div>
 
-
     </body>
 
     </html>
-
   `);
 
 
   reportWindow.document.close();
-
 
   reportWindow.focus();
 
@@ -3341,7 +3619,9 @@ async function updateDashboard() {
 
 
   const reservations =
-    Array.isArray(window.reservations)
+    Array.isArray(
+      window.reservations
+    )
       ? window.reservations
       : [];
 
@@ -3358,7 +3638,10 @@ async function updateDashboard() {
     reservations.filter(
       function (reservation) {
 
-        return !isCancelled(reservation);
+        return !isCancelled(
+          reservation
+        );
+
       }
     );
 
@@ -3381,8 +3664,11 @@ async function updateDashboard() {
 
         return (
           reservation.check_in === today &&
-          !isCheckedOut(reservation)
+          !isCheckedOut(
+            reservation
+          )
         );
+
       }
     );
 
@@ -3406,21 +3692,14 @@ async function updateDashboard() {
 
 
   let todayRoom = 0;
-
   let monthRoom = 0;
 
   let todayPos = 0;
-
   let monthPos = 0;
 
   let todayExp = 0;
-
   let monthExp = 0;
 
-
-  // ----------------------------------------------------------
-  // ROOM REVENUE
-  // ----------------------------------------------------------
 
   activeReservations.forEach(
     function (reservation) {
@@ -3447,22 +3726,24 @@ async function updateDashboard() {
 
         monthRoom += rate;
       }
+
     }
   );
 
 
-  // ----------------------------------------------------------
-  // POS REVENUE
-  // ----------------------------------------------------------
-
   try {
+
+    const supabase =
+      getSupabase();
+
 
     const {
       data: orders,
       error: posError
-    } = await supabase
-      .from('pos_orders')
-      .select('*');
+    } =
+      await supabase
+        .from('pos_orders')
+        .select('*');
 
 
     if (!posError) {
@@ -3481,11 +3762,15 @@ async function updateDashboard() {
 
 
           const date =
-            String(created).slice(0, 10);
+            String(
+              created
+            ).slice(0, 10);
 
 
           const orderMonth =
-            String(created).slice(0, 7);
+            String(
+              created
+            ).slice(0, 7);
 
 
           const amount =
@@ -3494,31 +3779,33 @@ async function updateDashboard() {
             );
 
 
-          if (date === today) {
+          if (
+            date === today
+          ) {
 
             todayPos += amount;
           }
 
 
-          if (orderMonth === month) {
+          if (
+            orderMonth === month
+          ) {
 
             monthPos += amount;
           }
+
         }
       );
     }
 
 
-    // --------------------------------------------------------
-    // EXPERIENCES
-    // --------------------------------------------------------
-
     const {
       data: experiences,
       error: expError
-    } = await supabase
-      .from('experiences')
-      .select('*');
+    } =
+      await supabase
+        .from('experiences')
+        .select('*');
 
 
     if (!expError) {
@@ -3537,11 +3824,15 @@ async function updateDashboard() {
 
 
           const date =
-            String(created).slice(0, 10);
+            String(
+              created
+            ).slice(0, 10);
 
 
           const experienceMonth =
-            String(created).slice(0, 7);
+            String(
+              created
+            ).slice(0, 7);
 
 
           const amount =
@@ -3550,7 +3841,9 @@ async function updateDashboard() {
             );
 
 
-          if (date === today) {
+          if (
+            date === today
+          ) {
 
             todayExp += amount;
           }
@@ -3562,6 +3855,7 @@ async function updateDashboard() {
 
             monthExp += amount;
           }
+
         }
       );
     }
@@ -3576,10 +3870,6 @@ async function updateDashboard() {
     );
   }
 
-
-  // ----------------------------------------------------------
-  // TOTALS
-  // ----------------------------------------------------------
 
   const todayTotal =
     todayRoom +
@@ -3653,11 +3943,9 @@ async function updateDashboard() {
   );
 
 
-  // ----------------------------------------------------------
-  // CABIN STATUS
-  // ----------------------------------------------------------
-
-  updateCabinStatus(inHouse);
+  updateCabinStatus(
+    inHouse
+  );
 }
 
 
@@ -3665,7 +3953,9 @@ async function updateDashboard() {
 // CABIN STATUS
 // ============================================================
 
-function updateCabinStatus(inHouse) {
+function updateCabinStatus(
+  inHouse
+) {
 
   const badge =
     document.getElementById(
@@ -3759,6 +4049,10 @@ async function clearAllData() {
 
   try {
 
+    const supabase =
+      getSupabase();
+
+
     const tables = [
       'reservations',
       'pos_orders',
@@ -3772,10 +4066,14 @@ async function clearAllData() {
 
       const {
         error
-      } = await supabase
-        .from(table)
-        .delete()
-        .neq('id', -1);
+      } =
+        await supabase
+          .from(table)
+          .delete()
+          .neq(
+            'id',
+            -1
+          );
 
 
       if (error) {
@@ -3794,9 +4092,11 @@ async function clearAllData() {
     }
 
 
-    window.currentGuest = null;
+    window.currentGuest =
+      null;
 
-    window.reservations = [];
+    window.reservations =
+      [];
 
     cart = [];
 
@@ -3835,10 +4135,15 @@ async function clearAllData() {
 // HELPER - SET TEXT
 // ============================================================
 
-function setText(id, value) {
+function setText(
+  id,
+  value
+) {
 
   const element =
-    document.getElementById(id);
+    document.getElementById(
+      id
+    );
 
 
   if (element) {
@@ -3853,21 +4158,40 @@ function setText(id, value) {
 // HELPER - ESCAPE HTML
 // ============================================================
 
-function escapeHtml(value) {
+function escapeHtml(
+  value
+) {
 
-  if (value === null ||
-      value === undefined) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
 
     return '';
   }
 
 
   return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(
+      /&/g,
+      '&amp;'
+    )
+    .replace(
+      /</g,
+      '&lt;'
+    )
+    .replace(
+      />/g,
+      '&gt;'
+    )
+    .replace(
+      /"/g,
+      '&quot;'
+    )
+    .replace(
+      /'/g,
+      '&#039;'
+    );
 }
 
 
