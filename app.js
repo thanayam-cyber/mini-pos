@@ -2,27 +2,61 @@
 // WILD HASTHI POS
 // SUPABASE CLOUD DATABASE VERSION
 // ============================================================
-
-// Supabase client is created in index.html
+//
+// IMPORTANT:
+// Supabase client is created in index.html:
+//
 // const supabase = window.supabase.createClient(...);
+//
+// DO NOT create another "const supabase" in this file.
+// ============================================================
 
 
 // ============================================================
 // RATE MATRIX
+// DO NOT CHANGE THESE RATES
 // ============================================================
 
 const RATE_MATRIX = {
-  '1 adult': { HB: 330, AI: 430 },
-  '2 adults': { HB: 330, AI: 430 },
-  '3 adults': { HB: 405, AI: 530 },
-  '2 adults + 1 child 6-11': { HB: 370, AI: 485 },
-  '2 adults + 2 children 6-11': { HB: 410, AI: 540 }
+  '1 adult': {
+    HB: 330,
+    AI: 430
+  },
+
+  '2 adults': {
+    HB: 330,
+    AI: 430
+  },
+
+  '3 adults': {
+    HB: 405,
+    AI: 530
+  },
+
+  '2 adults + 1 child 6-11': {
+    HB: 370,
+    AI: 485
+  },
+
+  '2 adults + 2 children 6-11': {
+    HB: 410,
+    AI: 540
+  }
 };
 
+
+// ============================================================
+// GLOBAL VARIABLES
+// ============================================================
+
 let currentFilter = 'all';
+
 let cart = [];
 
+let realtimeStarted = false;
+
 window.currentGuest = null;
+
 window.reservations = [];
 
 
@@ -34,264 +68,507 @@ function getTodayString() {
   const today = new Date();
 
   const year = today.getFullYear();
+
   const month = String(today.getMonth() + 1).padStart(2, '0');
+
   const day = String(today.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
 }
 
+
+function getTomorrowString() {
+  const tomorrow = new Date();
+
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const year = tomorrow.getFullYear();
+
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+
 function getCurrentMonthString() {
   const today = new Date();
 
   const year = today.getFullYear();
+
   const month = String(today.getMonth() + 1).padStart(2, '0');
 
   return `${year}-${month}`;
 }
 
 
+function formatDate(dateString) {
+  if (!dateString) return '';
+
+  const date = new Date(`${dateString}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return dateString;
+  }
+
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
+
+function formatMoney(amount) {
+  return `$ ${Number(amount || 0).toFixed(2)}`;
+}
+
+
 // ============================================================
-// LOGIN / LOGOUT
+// SUPABASE CHECK
+// ============================================================
+
+function isSupabaseReady() {
+
+  if (typeof supabase === 'undefined') {
+    console.error('Supabase variable is not defined.');
+
+    return false;
+  }
+
+  if (!supabase.auth) {
+    console.error('Supabase Auth is not available.');
+
+    return false;
+  }
+
+  return true;
+}
+
+
+// ============================================================
+// LOGIN SCREEN
 // ============================================================
 
 function showLoginScreen() {
+
   const overlay = document.getElementById('loginOverlay');
 
   if (overlay) {
     overlay.classList.remove('hidden');
-    overlay.style.display = 'flex';
   }
 }
 
+
 function hideLoginScreen() {
+
   const overlay = document.getElementById('loginOverlay');
 
   if (overlay) {
-    overlay.style.setProperty('display', 'none', 'important');
     overlay.classList.add('hidden');
   }
 }
 
 
-// Supabase login
+// ============================================================
+// LOGIN
+// ============================================================
+
 async function handleLogin(event) {
-  if (event) event.preventDefault();
 
-  const emailEl = document.getElementById('loginEmail');
-  const passwordEl = document.getElementById('pinInput');
+  if (event) {
+    event.preventDefault();
+  }
 
-  const email = emailEl ? emailEl.value.trim() : '';
-  const password = passwordEl ? passwordEl.value : '';
+  const emailInput = document.getElementById('loginEmail');
+
+  const passwordInput = document.getElementById('pinInput');
+
+  const email = emailInput
+    ? emailInput.value.trim()
+    : '';
+
+  const password = passwordInput
+    ? passwordInput.value
+    : '';
+
 
   if (!email || !password) {
+
     alert('Please enter your email address and password.');
+
     return;
   }
 
+
+  if (!isSupabaseReady()) {
+
+    alert(
+      'Supabase is not initialized.\n\n' +
+      'Please make sure the Supabase script and connection are above app.js in index.html.'
+    );
+
+    return;
+  }
+
+
+  const button =
+    event &&
+    event.target &&
+    event.target.querySelector('button[type="submit"]');
+
+
+  const originalText = button
+    ? button.textContent
+    : 'Unlock Dashboard';
+
+
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
+
+    if (button) {
+
+      button.disabled = true;
+
+      button.textContent = 'Connecting...';
+    }
+
+
+    console.log('Attempting Supabase login...');
+
+    console.log('Supabase URL:', SUPABASE_URL);
+
+
+    const { data, error } =
+      await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
 
     if (error) {
-      console.error(error);
-      alert('Login failed: ' + error.message);
+
+      console.error('Supabase login error:', error);
+
+      alert(
+        'LOGIN FAILED\n\n' +
+        error.message
+      );
+
       return;
     }
 
-    if (!data.session) {
-      alert('Login failed. No active session was created.');
+
+    if (!data || !data.session) {
+
+      console.error('Login succeeded but no session was returned.');
+
+      alert(
+        'Login did not create a session.\n\n' +
+        'Please check the Supabase Authentication settings.'
+      );
+
       return;
     }
+
+
+    console.log('Supabase login successful.');
 
     hideLoginScreen();
 
     await initApp();
 
-  } catch (error) {
-    console.error('Login error:', error);
-    alert('Could not connect to the cloud database.');
+  }
+
+  catch (error) {
+
+    console.error('Unexpected login error:', error);
+
+    alert(
+      'UNEXPECTED ERROR\n\n' +
+      (error.message || String(error))
+    );
+
+  }
+
+  finally {
+
+    if (button) {
+
+      button.disabled = false;
+
+      button.textContent = originalText;
+    }
   }
 }
 
-window.handleLogin = handleLogin;
 
+// ============================================================
+// LOGOUT
+// ============================================================
 
-// Logout
 async function logout() {
+
   try {
-    await supabase.auth.signOut();
-  } catch (error) {
+
+    if (isSupabaseReady()) {
+
+      await supabase.auth.signOut();
+    }
+
+  }
+
+  catch (error) {
+
     console.error('Logout error:', error);
   }
 
+
   window.currentGuest = null;
+
+  cart = [];
 
   showLoginScreen();
 }
 
-window.logout = logout;
-
 
 // ============================================================
-// AUTH CHECK
+// CHECK AUTHENTICATION
 // ============================================================
 
 async function checkAuthentication() {
-  const { data, error } = await supabase.auth.getSession();
 
-  if (error) {
-    console.error('Session error:', error);
+  if (!isSupabaseReady()) {
+
+    console.error('Supabase is not ready.');
+
     showLoginScreen();
+
     return false;
   }
 
-  if (data && data.session) {
-    hideLoginScreen();
-    return true;
+
+  try {
+
+    const {
+      data,
+      error
+    } = await supabase.auth.getSession();
+
+
+    if (error) {
+
+      console.error('Session check error:', error);
+
+      showLoginScreen();
+
+      return false;
+    }
+
+
+    if (data && data.session) {
+
+      hideLoginScreen();
+
+      return true;
+    }
+
+
+    showLoginScreen();
+
+    return false;
+
   }
 
-  showLoginScreen();
-  return false;
+  catch (error) {
+
+    console.error('Authentication check failed:', error);
+
+    showLoginScreen();
+
+    return false;
+  }
 }
 
 
 // ============================================================
-// APP INITIALIZATION
+// START APPLICATION
 // ============================================================
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async function () {
 
-  const loggedIn = await checkAuthentication();
+  console.log('Wild Hasthi POS starting...');
 
-  if (loggedIn) {
+  console.log(
+    'Supabase available:',
+    typeof supabase !== 'undefined'
+  );
+
+
+  const authenticated = await checkAuthentication();
+
+
+  if (authenticated) {
+
     await initApp();
   }
 
 });
 
 
+// ============================================================
+// INITIALIZE APP
+// ============================================================
+
 async function initApp() {
 
-  hideLoginScreen();
+  console.log('Initializing Wild Hasthi POS...');
 
-  const today = new Date();
 
-  const options = {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  };
+  const today = getTodayString();
 
-  const dateStr = today
-    .toLocaleDateString('en-GB', options)
-    .toUpperCase();
+  const tomorrow = getTomorrowString();
 
-  const dateEl = document.getElementById('currentDateDisplay');
 
-  if (dateEl) {
-    dateEl.innerText = dateStr;
+  const dateDisplay =
+    document.getElementById('currentDateDisplay');
+
+
+  if (dateDisplay) {
+
+    dateDisplay.textContent =
+      new Date().toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      }).toUpperCase();
   }
 
 
-  const todayStr = getTodayString();
-
-  const tomorrow = new Date();
-
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const year = tomorrow.getFullYear();
-  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-  const day = String(tomorrow.getDate()).padStart(2, '0');
-
-  const tomorrowStr = `${year}-${month}-${day}`;
+  const checkIn =
+    document.getElementById('resCheckIn');
 
 
-  const checkInInput = document.getElementById('resCheckIn');
-  const checkOutInput = document.getElementById('resCheckOut');
+  const checkOut =
+    document.getElementById('resCheckOut');
 
-  if (checkInInput) {
-    checkInInput.value = todayStr;
+
+  if (checkIn && !checkIn.value) {
+
+    checkIn.value = today;
   }
 
-  if (checkOutInput) {
-    checkOutInput.value = tomorrowStr;
+
+  if (checkOut && !checkOut.value) {
+
+    checkOut.value = tomorrow;
   }
 
 
   updateCalculatedRate();
 
+
   await loadReservations();
+
 
   await updateDashboard();
 
+
   setupRealtime();
+
+  console.log('Wild Hasthi POS ready.');
 }
 
 
 // ============================================================
-// REALTIME SYNC
+// REALTIME
 // ============================================================
-
-let realtimeStarted = false;
 
 function setupRealtime() {
 
-  if (realtimeStarted) return;
+  if (realtimeStarted) {
+    return;
+  }
 
-  realtimeStarted = true;
 
-  supabase
-    .channel('wild-hasthi-pos-live-sync')
+  if (!isSupabaseReady()) {
+    return;
+  }
 
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'reservations'
-      },
-      async () => {
 
-        console.log('Reservation changed');
+  try {
 
-        await loadReservations();
-        await updateDashboard();
-      }
-    )
+    supabase
+      .channel('wild-hasthi-live-updates')
 
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'pos_orders'
-      },
-      async () => {
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reservations'
+        },
+        async function () {
 
-        console.log('POS order changed');
+          console.log('Reservations updated.');
 
-        await updateDashboard();
-      }
-    )
+          await loadReservations();
 
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'experiences'
-      },
-      async () => {
+          await updateDashboard();
+        }
+      )
 
-        console.log('Experience changed');
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pos_orders'
+        },
+        async function () {
 
-        await updateDashboard();
-      }
-    )
+          console.log('POS orders updated.');
 
-    .subscribe();
+          await updateDashboard();
+        }
+      )
+
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'experiences'
+        },
+        async function () {
+
+          console.log('Experiences updated.');
+
+          await updateDashboard();
+        }
+      )
+
+      .subscribe(function (status) {
+
+        console.log(
+          'Realtime status:',
+          status
+        );
+      });
+
+
+    realtimeStarted = true;
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Realtime setup error:',
+      error
+    );
+  }
 }
 
 
@@ -299,103 +576,134 @@ function setupRealtime() {
 // NAVIGATION
 // ============================================================
 
-function switchTab(tabId) {
+function switchTab(tabName) {
 
-  document
-    .querySelectorAll('.tab-view')
-    .forEach(view => view.classList.add('hidden'));
-
-  document
-    .querySelectorAll('.nav-btn')
-    .forEach(btn => {
-
-      btn.classList.remove(
-        'active-nav',
-        'bg-slate-800',
-        'text-white'
-      );
-
-      btn.classList.add('text-slate-400');
-
-    });
+  const views =
+    document.querySelectorAll('.tab-view');
 
 
-  const activeView = document.getElementById(`view-${tabId}`);
+  views.forEach(function (view) {
 
-  if (activeView) {
-    activeView.classList.remove('hidden');
+    view.classList.add('hidden');
+  });
+
+
+  const selectedView =
+    document.getElementById(
+      `view-${tabName}`
+    );
+
+
+  if (selectedView) {
+
+    selectedView.classList.remove('hidden');
   }
 
 
-  const activeNav = document.getElementById(`nav-${tabId}`);
+  const buttons =
+    document.querySelectorAll('.nav-btn');
 
-  if (activeNav) {
 
-    activeNav.classList.add(
-      'active-nav',
+  buttons.forEach(function (button) {
+
+    button.classList.remove(
       'bg-slate-800',
       'text-white'
     );
 
-    activeNav.classList.remove('text-slate-400');
+    button.classList.add(
+      'text-slate-400'
+    );
+  });
+
+
+  const selectedButton =
+    document.getElementById(
+      `nav-${tabName}`
+    );
+
+
+  if (selectedButton) {
+
+    selectedButton.classList.add(
+      'bg-slate-800',
+      'text-white'
+    );
+
+    selectedButton.classList.remove(
+      'text-slate-400'
+    );
   }
 
 
-  const titleMap = {
+  const titles = {
 
     dashboard: 'Dashboard',
 
-    reservations: 'Reservations & Future Bookings',
+    reservations: 'Bookings',
 
-    pos: 'Restaurant & POS',
+    pos: 'Restaurant POS',
 
-    safari: 'Tours & Experiences',
+    safari: 'Extra Experiences',
 
     folio: 'Guest Folio'
-
   };
 
 
-  const titleEl = document.getElementById('pageTitle');
+  const pageTitle =
+    document.getElementById('pageTitle');
 
-  if (titleEl) {
-    titleEl.innerText =
-      titleMap[tabId] || 'Dashboard';
+
+  if (pageTitle) {
+
+    pageTitle.textContent =
+      titles[tabName] || 'Dashboard';
   }
 
-}
 
-window.switchTab = switchTab;
+  if (tabName === 'folio') {
+
+    updateFolio();
+  }
+
+
+  if (tabName === 'reservations') {
+
+    renderReservations();
+  }
+}
 
 
 // ============================================================
 // MODALS
 // ============================================================
 
-function openModal(modalId) {
+function openModal(id) {
 
-  const modal = document.getElementById(modalId);
+  const modal =
+    document.getElementById(id);
+
 
   if (modal) {
-    modal.classList.remove('hidden');
-  }
 
+    modal.classList.remove('hidden');
+
+    updateCalculatedRate();
+  }
 }
 
-window.openModal = openModal;
 
+function closeModal(id) {
 
-function closeModal(modalId) {
+  const modal =
+    document.getElementById(id);
 
-  const modal = document.getElementById(modalId);
 
   if (modal) {
+
     modal.classList.add('hidden');
   }
-
 }
-
-window.closeModal = closeModal;
 
 
 // ============================================================
@@ -404,146 +712,235 @@ window.closeModal = closeModal;
 
 function updateCalculatedRate() {
 
-  const selectionEl =
+  const selection =
     document.getElementById('resSelection');
 
-  const packageEl =
+
+  const packageSelect =
     document.getElementById('resPackage');
+
 
   const rateInput =
     document.getElementById('resRate');
 
 
-  if (!selectionEl || !packageEl || !rateInput) {
+  if (!selection ||
+      !packageSelect ||
+      !rateInput) {
+
     return;
   }
 
 
-  const selection = selectionEl.value;
+  const occupancy =
+    selection.value;
 
-  const boardBasis = packageEl.value;
+
+  const packageType =
+    packageSelect.value;
 
 
-  if (
-    RATE_MATRIX[selection] &&
-    RATE_MATRIX[selection][boardBasis]
-  ) {
+  const row =
+    RATE_MATRIX[occupancy];
 
-    rateInput.value =
-      RATE_MATRIX[selection][boardBasis];
 
+  if (!row) {
+
+    rateInput.value = '';
+
+    return;
   }
 
-}
 
-window.updateCalculatedRate = updateCalculatedRate;
+  const rate =
+    Number(row[packageType] || 0);
+
+
+  rateInput.value = rate;
+}
 
 
 // ============================================================
-// RESERVATIONS
+// SAVE RESERVATION
 // ============================================================
 
 async function saveReservation(event) {
 
-  event.preventDefault();
+  if (event) {
+    event.preventDefault();
+  }
 
 
-  const reservation = {
+  if (!isSupabaseReady()) {
 
-    guest_name:
-      document.getElementById('resGuestName').value,
+    alert(
+      'Supabase is not initialized.'
+    );
 
-    check_in:
-      document.getElementById('resCheckIn').value,
+    return;
+  }
 
-    check_out:
-      document.getElementById('resCheckOut').value,
 
-    selection:
-      document.getElementById('resSelection').value,
+  const guestName =
+    document.getElementById('resGuestName')?.value.trim();
 
-    package_type:
-      document.getElementById('resPackage').value,
 
-    safari:
-      document.getElementById('resSafari').value,
+  const checkIn =
+    document.getElementById('resCheckIn')?.value;
 
-    rate:
-      parseFloat(
-        document.getElementById('resRate').value
-      ),
 
-    status:
-      'Confirmed'
-  };
+  const checkOut =
+    document.getElementById('resCheckOut')?.value;
+
+
+  const selection =
+    document.getElementById('resSelection')?.value;
+
+
+  const packageType =
+    document.getElementById('resPackage')?.value;
+
+
+  const safari =
+    document.getElementById('resSafari')?.value;
+
+
+  const rate =
+    Number(
+      document.getElementById('resRate')?.value || 0
+    );
+
+
+  if (!guestName ||
+      !checkIn ||
+      !checkOut ||
+      !selection ||
+      !packageType) {
+
+    alert(
+      'Please complete all required reservation details.'
+    );
+
+    return;
+  }
+
+
+  if (checkOut <= checkIn) {
+
+    alert(
+      'Check-out date must be after check-in date.'
+    );
+
+    return;
+  }
 
 
   try {
 
-    const { error } =
-      await supabase
-        .from('reservations')
-        .insert(reservation);
+    const reservation = {
+
+      guest_name: guestName,
+
+      check_in: checkIn,
+
+      check_out: checkOut,
+
+      occupancy: selection,
+
+      package: packageType,
+
+      safari: safari,
+
+      rate: rate,
+
+      status: 'Confirmed'
+    };
+
+
+    console.log(
+      'Saving reservation:',
+      reservation
+    );
+
+
+    const {
+      data,
+      error
+    } = await supabase
+      .from('reservations')
+      .insert([reservation])
+      .select();
 
 
     if (error) {
-      console.error(error);
-      alert('Could not save reservation: ' + error.message);
+
+      console.error(
+        'Reservation save error:',
+        error
+      );
+
+      alert(
+        'Could not save booking.\n\n' +
+        error.message
+      );
+
       return;
     }
 
 
-    closeModal('modalNewReservation');
+    console.log(
+      'Reservation saved:',
+      data
+    );
 
-    document
-      .getElementById('reservationForm')
-      .reset();
+
+    alert(
+      'Reservation saved successfully.'
+    );
 
 
-    const todayStr = getTodayString();
+    const form =
+      document.getElementById('reservationForm');
 
-    const tomorrow = new Date();
 
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const year = tomorrow.getFullYear();
-
-    const month =
-      String(tomorrow.getMonth() + 1)
-        .padStart(2, '0');
-
-    const day =
-      String(tomorrow.getDate())
-        .padStart(2, '0');
+    if (form) {
+      form.reset();
+    }
 
 
     document.getElementById('resCheckIn').value =
-      todayStr;
+      getTodayString();
+
 
     document.getElementById('resCheckOut').value =
-      `${year}-${month}-${day}`;
+      getTomorrowString();
 
 
     updateCalculatedRate();
+
+    closeModal('modalNewReservation');
+
 
     await loadReservations();
 
     await updateDashboard();
 
 
-    alert('Reservation saved successfully!');
-
-  } catch (error) {
-
-    console.error(error);
-
-    alert('Could not save reservation.');
-
   }
 
-}
+  catch (error) {
 
-window.saveReservation = saveReservation;
+    console.error(
+      'Unexpected reservation error:',
+      error
+    );
+
+    alert(
+      'Unexpected error:\n\n' +
+      (error.message || String(error))
+    );
+  }
+}
 
 
 // ============================================================
@@ -552,190 +949,165 @@ window.saveReservation = saveReservation;
 
 async function loadReservations() {
 
+  if (!isSupabaseReady()) {
+    return;
+  }
+
+
   try {
 
-    const { data, error } =
-      await supabase
-        .from('reservations')
-        .select('*')
-        .order('id', {
-          ascending: false
-        });
+    const {
+      data,
+      error
+    } = await supabase
+      .from('reservations')
+      .select('*')
+      .order('check_in', {
+        ascending: true
+      });
 
 
     if (error) {
-      console.error(error);
-      alert('Could not load reservations: ' + error.message);
-      return;
-    }
 
-
-    let reservations =
-      (data || []).map(mapReservationFromSupabase);
-
-
-    window.reservations = reservations;
-
-
-    if (currentFilter === 'in-house') {
-
-      reservations =
-        reservations.filter(r =>
-          r.status === 'Checked In' ||
-          r.status === 'in-house'
-        );
-
-    }
-
-    else if (currentFilter === 'future') {
-
-      reservations =
-        reservations.filter(r =>
-          r.status === 'Confirmed' ||
-          r.status === 'future'
-        );
-
-    }
-
-    else if (currentFilter === 'checked-out') {
-
-      reservations =
-        reservations.filter(r =>
-          r.status === 'Checked Out' ||
-          r.status === 'checked-out'
-        );
-
-    }
-
-    else if (currentFilter === 'cancelled') {
-
-      reservations =
-        reservations.filter(r =>
-          r.status === 'cancelled' ||
-          r.status === 'Cancelled'
-        );
-
-    }
-
-
-    const tbody =
-      document.getElementById(
-        'reservationsTableBody'
+      console.error(
+        'Load reservations error:',
+        error
       );
 
+      const body =
+        document.getElementById(
+          'reservationsTableBody'
+        );
 
-    if (!tbody) return;
 
+      if (body) {
 
-    tbody.innerHTML = '';
-
-
-    if (reservations.length === 0) {
-
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="7"
-              class="p-4 text-center text-slate-400 italic">
-            No bookings found in this category.
-          </td>
-        </tr>
-      `;
+        body.innerHTML = `
+          <tr>
+            <td colspan="7"
+                class="p-6 text-center text-rose-600 font-bold">
+              Could not load reservations.
+              <br>
+              <span class="text-xs font-normal">
+                ${escapeHtml(error.message)}
+              </span>
+            </td>
+          </tr>
+        `;
+      }
 
       return;
     }
 
 
-    reservations.forEach(res => {
-
-      tbody.innerHTML +=
-        renderReservationRow(res);
-
-    });
+    window.reservations =
+      Array.isArray(data)
+        ? data
+        : [];
 
 
-  } catch (error) {
+    renderReservations();
 
-    console.error('Load reservations error:', error);
 
   }
 
-}
+  catch (error) {
 
-window.loadReservations = loadReservations;
+    console.error(
+      'Unexpected load error:',
+      error
+    );
+  }
+}
 
 
 // ============================================================
-// SUPABASE → APP MAPPING
+// MAP RESERVATION VALUES
 // ============================================================
 
-function mapReservationFromSupabase(row) {
+function getReservationStatus(reservation) {
 
-  return {
-
-    id: row.id,
-
-    guestName: row.guest_name,
-
-    checkIn: row.check_in,
-
-    checkOut: row.check_out,
-
-    selection: row.selection,
-
-    packageType: row.package_type,
-
-    package: row.package_type,
-
-    safari: row.safari,
-
-    rate: Number(row.rate || 0),
-
-    status: row.status,
-
-    createdAt: row.created_at
-
-  };
-
+  return String(
+    reservation?.status || 'Confirmed'
+  ).toLowerCase();
 }
 
 
-function mapPosOrderFromSupabase(row) {
+function isCancelled(reservation) {
 
-  return {
-
-    id: row.id,
-
-    items: row.items || [],
-
-    amount: Number(row.amount || 0),
-
-    date: row.date,
-
-    paymentMethod: row.payment_method,
-
-    createdAt: row.created_at
-
-  };
-
+  return [
+    'cancelled',
+    'canceled'
+  ].includes(
+    getReservationStatus(reservation)
+  );
 }
 
 
-function mapExperienceFromSupabase(row) {
+function isCheckedOut(reservation) {
 
-  return {
+  return [
+    'checked-out',
+    'checked_out',
+    'checkedout'
+  ].includes(
+    getReservationStatus(reservation)
+  );
+}
 
-    id: row.id,
 
-    name: row.name,
+function isInHouse(reservation) {
 
-    amount: Number(row.amount || 0),
+  const status =
+    getReservationStatus(reservation);
 
-    date: row.date,
 
-    createdAt: row.created_at
+  if (
+    status === 'in-house' ||
+    status === 'in_house' ||
+    status === 'inhouse'
+  ) {
 
-  };
+    return true;
+  }
 
+
+  if (
+    isCancelled(reservation) ||
+    isCheckedOut(reservation)
+  ) {
+
+    return false;
+  }
+
+
+  const today =
+    getTodayString();
+
+
+  return (
+    reservation.check_in <= today &&
+    reservation.check_out > today
+  );
+}
+
+
+function isFutureBooking(reservation) {
+
+  if (
+    isCancelled(reservation) ||
+    isCheckedOut(reservation)
+  ) {
+
+    return false;
+  }
+
+
+  const today =
+    getTodayString();
+
+
+  return reservation.check_in > today;
 }
 
 
@@ -743,257 +1115,706 @@ function mapExperienceFromSupabase(row) {
 // RESERVATION FILTER
 // ============================================================
 
-function filterReservations(filterType) {
+function filterReservations(filter) {
 
-  currentFilter = filterType;
+  currentFilter = filter;
 
 
-  [
+  const filters = [
     'all',
     'in-house',
     'future',
     'checked-out',
     'cancelled'
-  ].forEach(f => {
-
-    const btn =
-      document.getElementById(`filter-${f}`);
+  ];
 
 
-    if (!btn) return;
+  filters.forEach(function (name) {
+
+    const button =
+      document.getElementById(
+        `filter-${name}`
+      );
 
 
-    if (f === filterType) {
-
-      btn.className =
-        'px-3.5 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold transition';
-
-    } else {
-
-      btn.className =
-        'px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition';
-
+    if (!button) {
+      return;
     }
 
+
+    button.classList.remove(
+      'bg-slate-900',
+      'text-white'
+    );
+
+
+    button.classList.add(
+      'bg-slate-100',
+      'text-slate-700'
+    );
   });
 
 
-  loadReservations();
+  const active =
+    document.getElementById(
+      `filter-${filter}`
+    );
 
+
+  if (active) {
+
+    active.classList.remove(
+      'bg-slate-100',
+      'text-slate-700'
+    );
+
+    active.classList.add(
+      'bg-slate-900',
+      'text-white'
+    );
+  }
+
+
+  renderReservations();
 }
 
-window.filterReservations = filterReservations;
+
+// ============================================================
+// RENDER RESERVATIONS
+// ============================================================
+
+function renderReservations() {
+
+  const body =
+    document.getElementById(
+      'reservationsTableBody'
+    );
+
+
+  if (!body) {
+    return;
+  }
+
+
+  let reservations =
+    Array.isArray(window.reservations)
+      ? [...window.reservations]
+      : [];
+
+
+  if (currentFilter === 'in-house') {
+
+    reservations =
+      reservations.filter(
+        isInHouse
+      );
+  }
+
+
+  if (currentFilter === 'future') {
+
+    reservations =
+      reservations.filter(
+        isFutureBooking
+      );
+  }
+
+
+  if (currentFilter === 'checked-out') {
+
+    reservations =
+      reservations.filter(
+        isCheckedOut
+      );
+  }
+
+
+  if (currentFilter === 'cancelled') {
+
+    reservations =
+      reservations.filter(
+        isCancelled
+      );
+  }
+
+
+  if (reservations.length === 0) {
+
+    body.innerHTML = `
+      <tr>
+        <td colspan="7"
+            class="p-8 text-center text-slate-400 italic">
+          No bookings found.
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+
+  body.innerHTML =
+    reservations
+      .map(renderReservationRow)
+      .join('');
+}
+
+
+// ============================================================
+// RESERVATION ROW
+// ============================================================
+
+function renderReservationRow(reservation) {
+
+  const status =
+    getReservationStatus(reservation);
+
+
+  let statusLabel =
+    reservation.status || 'Confirmed';
+
+
+  let statusClass =
+    'bg-slate-100 text-slate-700';
+
+
+  if (isCancelled(reservation)) {
+
+    statusClass =
+      'bg-rose-100 text-rose-700';
+
+  }
+
+  else if (isCheckedOut(reservation)) {
+
+    statusClass =
+      'bg-slate-200 text-slate-700';
+
+  }
+
+  else if (isInHouse(reservation)) {
+
+    statusLabel = 'In-House';
+
+    statusClass =
+      'bg-emerald-100 text-emerald-800';
+
+  }
+
+  else {
+
+    statusClass =
+      'bg-blue-100 text-blue-700';
+  }
+
+
+  const guestName =
+    escapeHtml(
+      reservation.guest_name ||
+      reservation.name ||
+      'Guest'
+    );
+
+
+  const occupancy =
+    escapeHtml(
+      reservation.occupancy ||
+      reservation.selection ||
+      '-'
+    );
+
+
+  const packageName =
+    reservation.package ||
+    reservation.board_basis ||
+    '-';
+
+
+  const rate =
+    Number(
+      reservation.rate ||
+      reservation.amount ||
+      0
+    );
+
+
+  let actions = '';
+
+
+  if (
+    !isCancelled(reservation) &&
+    !isCheckedOut(reservation)
+  ) {
+
+    actions += `
+      <button
+        onclick="directCheckIn('${reservation.id}')"
+        class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold mr-1">
+        Check In
+      </button>
+    `;
+  }
+
+
+  if (isInHouse(reservation)) {
+
+    actions += `
+      <button
+        onclick="selectGuestForFolio('${reservation.id}')"
+        class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold mr-1">
+        Folio
+      </button>
+    `;
+  }
+
+
+  if (isCheckedOut(reservation)) {
+
+    actions += `
+      <button
+        onclick="reopenReservation('${reservation.id}')"
+        class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold mr-1">
+        Reopen
+      </button>
+    `;
+  }
+
+
+  if (!isCancelled(reservation)) {
+
+    actions += `
+      <button
+        onclick="cancelBooking('${reservation.id}')"
+        class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-[10px] font-bold mr-1">
+        Cancel
+      </button>
+    `;
+  }
+
+
+  actions += `
+    <button
+      onclick="deleteBooking('${reservation.id}')"
+      class="px-2.5 py-1 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-700 rounded-lg text-[10px] font-bold">
+      Delete
+    </button>
+  `;
+
+
+  return `
+    <tr class="hover:bg-slate-50">
+
+      <td class="p-4 font-bold text-slate-800">
+        ${guestName}
+      </td>
+
+      <td class="p-4 text-slate-500">
+        ${formatDate(reservation.check_in)}
+        →
+        ${formatDate(reservation.check_out)}
+      </td>
+
+      <td class="p-4 text-slate-600">
+        ${occupancy}
+      </td>
+
+      <td class="p-4 font-bold text-slate-600">
+        ${escapeHtml(packageName)}
+      </td>
+
+      <td class="p-4 font-black text-emerald-700">
+        ${formatMoney(rate)}
+      </td>
+
+      <td class="p-4">
+
+        <span
+          class="px-2.5 py-1 rounded-full text-[10px] font-bold ${statusClass}"
+        >
+          ${escapeHtml(statusLabel)}
+        </span>
+
+      </td>
+
+      <td class="p-4 text-center whitespace-nowrap">
+        ${actions}
+      </td>
+
+    </tr>
+  `;
+}
 
 
 // ============================================================
 // CHECK IN
 // ============================================================
 
-async function checkInGuest(id) {
+async function directCheckIn(id) {
 
-  if (!confirm(
-    'Check in guest now? This will activate the room.'
-  )) {
+  const reservation =
+    window.reservations.find(
+      function (item) {
+        return String(item.id) === String(id);
+      }
+    );
+
+
+  if (!reservation) {
+
+    alert('Booking not found.');
+
     return;
   }
 
 
-  const { error } =
-    await supabase
+  try {
+
+    const {
+      error
+    } = await supabase
       .from('reservations')
       .update({
         status: 'in-house'
       })
-      .eq('id', Number(id));
+      .eq('id', id);
 
 
-  if (error) {
+    if (error) {
 
-    console.error(error);
+      console.error(
+        'Check-in error:',
+        error
+      );
 
-    alert(
-      'Could not check in guest: ' +
-      error.message
-    );
+      alert(
+        'Could not check in guest.\n\n' +
+        error.message
+      );
 
-    return;
-  }
+      return;
+    }
 
-
-  const { data: guest } =
-    await supabase
-      .from('reservations')
-      .select('*')
-      .eq('id', Number(id))
-      .single();
-
-
-  if (guest) {
 
     window.currentGuest =
-      mapReservationFromSupabase(guest);
-
-  }
+      reservation;
 
 
-  await loadReservations();
+    window.currentGuest.status =
+      'in-house';
 
-  await updateDashboard();
-
-}
-
-window.checkInGuest = checkInGuest;
-
-
-// ============================================================
-// DIRECT CHECKOUT
-// ============================================================
-
-async function checkoutGuestDirect(id) {
-
-  if (!confirm(
-    'Check out this guest now?'
-  )) {
-    return;
-  }
-
-
-  const { error } =
-    await supabase
-      .from('reservations')
-      .update({
-        status: 'checked-out'
-      })
-      .eq('id', Number(id));
-
-
-  if (error) {
-
-    console.error(error);
 
     alert(
-      'Could not check out guest: ' +
-      error.message
+      `${reservation.guest_name || 'Guest'} is now checked in.`
     );
 
-    return;
+
+    await loadReservations();
+
+    await updateDashboard();
+
+
+    switchTab('folio');
+
+
   }
 
+  catch (error) {
 
-  if (
-    window.currentGuest &&
-    window.currentGuest.id === Number(id)
-  ) {
+    console.error(
+      'Unexpected check-in error:',
+      error
+    );
 
-    window.currentGuest = null;
-
+    alert(
+      'Unexpected error:\n\n' +
+      error.message
+    );
   }
-
-
-  await loadReservations();
-
-  await updateDashboard();
-
 }
 
-window.checkoutGuestDirect =
-  checkoutGuestDirect;
-
 
 // ============================================================
-// REOPEN BOOKING
+// SELECT GUEST FOR FOLIO
 // ============================================================
 
-async function reopenBooking(id) {
+function selectGuestForFolio(id) {
 
-  if (!confirm(
-    'Re-open this booking back to Confirmed status?'
-  )) {
+  const reservation =
+    window.reservations.find(
+      function (item) {
+        return String(item.id) === String(id);
+      }
+    );
+
+
+  if (!reservation) {
+
+    alert('Booking not found.');
+
     return;
   }
 
 
-  const { error } =
-    await supabase
+  window.currentGuest =
+    reservation;
+
+
+  switchTab('folio');
+}
+
+
+// ============================================================
+// REOPEN RESERVATION
+// ============================================================
+
+async function reopenReservation(id) {
+
+  try {
+
+    const {
+      error
+    } = await supabase
       .from('reservations')
       .update({
         status: 'Confirmed'
       })
-      .eq('id', Number(id));
+      .eq('id', id);
 
 
-  if (error) {
+    if (error) {
 
-    console.error(error);
+      console.error(
+        'Reopen error:',
+        error
+      );
 
-    alert(
-      'Could not reopen booking: ' +
-      error.message
+      alert(
+        'Could not reopen booking.\n\n' +
+        error.message
+      );
+
+      return;
+    }
+
+
+    alert('Booking reopened successfully.');
+
+
+    await loadReservations();
+
+    await updateDashboard();
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Unexpected reopen error:',
+      error
     );
 
+    alert(
+      'Unexpected error:\n\n' +
+      error.message
+    );
+  }
+}
+
+
+// ============================================================
+// CANCEL BOOKING
+// ============================================================
+
+async function cancelBooking(id) {
+
+  const confirmed =
+    confirm(
+      'Are you sure you want to cancel this booking?'
+    );
+
+
+  if (!confirmed) {
     return;
   }
 
 
-  await loadReservations();
+  try {
 
-  await updateDashboard();
+    const {
+      error
+    } = await supabase
+      .from('reservations')
+      .update({
+        status: 'Cancelled'
+      })
+      .eq('id', id);
 
+
+    if (error) {
+
+      console.error(
+        'Cancel booking error:',
+        error
+      );
+
+      alert(
+        'Could not cancel booking.\n\n' +
+        error.message
+      );
+
+      return;
+    }
+
+
+    alert('Booking cancelled.');
+
+
+    await loadReservations();
+
+    await updateDashboard();
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Unexpected cancel error:',
+      error
+    );
+
+    alert(
+      'Unexpected error:\n\n' +
+      error.message
+    );
+  }
 }
 
-window.reopenBooking = reopenBooking;
+
+// ============================================================
+// DELETE BOOKING
+// ============================================================
+
+async function deleteBooking(id) {
+
+  const confirmed =
+    confirm(
+      'Delete this booking permanently?\n\nThis cannot be undone.'
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  try {
+
+    const {
+      error
+    } = await supabase
+      .from('reservations')
+      .delete()
+      .eq('id', id);
+
+
+    if (error) {
+
+      console.error(
+        'Delete booking error:',
+        error
+      );
+
+      alert(
+        'Could not delete booking.\n\n' +
+        error.message
+      );
+
+      return;
+    }
+
+
+    alert('Booking deleted.');
+
+
+    await loadReservations();
+
+    await updateDashboard();
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Unexpected delete error:',
+      error
+    );
+
+    alert(
+      'Unexpected error:\n\n' +
+      error.message
+    );
+  }
+}
 
 
 // ============================================================
-// POS CART
+// POS - ADD TO CART
 // ============================================================
 
-function addToCart(name, price) {
+function addToCart(itemName, price) {
 
   const existing =
-    cart.find(item => item.name === name);
+    cart.find(
+      function (item) {
+        return item.name === itemName;
+      }
+    );
 
 
   if (existing) {
 
-    existing.qty += 1;
+    existing.quantity += 1;
 
-  } else {
+  }
+
+  else {
 
     cart.push({
 
-      name: name,
+      name: itemName,
 
       price: Number(price),
 
-      qty: 1
-
+      quantity: 1
     });
-
   }
 
 
   renderCart();
-
 }
-
-window.addToCart = addToCart;
 
 
 // ============================================================
-// RENDER CART
+// POS - RENDER CART
 // ============================================================
 
 function renderCart() {
 
   const container =
-    document.getElementById('posCartItems');
+    document.getElementById(
+      'posCartItems'
+    );
 
-  const totalEl =
-    document.getElementById('posCartTotal');
+
+  const totalElement =
+    document.getElementById(
+      'posCartTotal'
+    );
 
 
-  if (!container || !totalEl) return;
+  if (!container) {
+    return;
+  }
 
 
   if (cart.length === 0) {
@@ -1004,72 +1825,85 @@ function renderCart() {
       </p>
     `;
 
-    totalEl.innerText = '$0';
+
+    if (totalElement) {
+
+      totalElement.textContent =
+        '$0.00';
+    }
+
 
     return;
-
   }
 
 
-  let total = 0;
-
-
   container.innerHTML =
-    cart.map((item, index) => {
+    cart.map(
+      function (item, index) {
 
-      const itemTotal =
-        item.price * item.qty;
-
-      total += itemTotal;
+        const lineTotal =
+          item.price * item.quantity;
 
 
-      return `
-        <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl text-sm">
+        return `
+          <div
+            class="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl"
+          >
 
-          <div>
+            <div class="min-w-0">
 
-            <div class="font-bold text-slate-800">
-              ${item.name}
+              <div class="text-xs font-bold text-slate-700 truncate">
+                ${escapeHtml(item.name)}
+              </div>
+
+              <div class="text-[10px] text-slate-400">
+                ${item.quantity} × ${formatMoney(item.price)}
+              </div>
+
             </div>
 
-            <div class="text-xs text-slate-400">
-              $${item.price} x ${item.qty}
+            <div class="flex items-center gap-2">
+
+              <span class="text-xs font-black text-emerald-700">
+                ${formatMoney(lineTotal)}
+              </span>
+
+              <button
+                onclick="removeFromCart(${index})"
+                class="w-6 h-6 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200"
+              >
+                ×
+              </button>
+
             </div>
 
           </div>
-
-          <div class="flex items-center gap-2">
-
-            <span class="font-bold text-slate-900">
-              $${itemTotal}
-            </span>
-
-            <button
-              onclick="removeFromCart(${index})"
-              class="text-rose-500 hover:text-rose-700 text-xs px-1">
-
-              <i class="fa-solid fa-trash"></i>
-
-            </button>
-
-          </div>
-
-        </div>
-      `;
-
-    }).join('');
+        `;
+      }
+    ).join('');
 
 
-  totalEl.innerText =
-    `$${total}`;
+  const total =
+    cart.reduce(
+      function (sum, item) {
+        return sum +
+          item.price *
+          item.quantity;
+      },
+      0
+    );
 
+
+  if (totalElement) {
+
+    totalElement.textContent =
+      formatMoney(total);
+  }
 }
-
-window.renderCart = renderCart;
 
 
 // ============================================================
-// REMOVE CART ITEM
+// POS - REMOVE CART ITEM
 // ============================================================
 
 function removeFromCart(index) {
@@ -1077,464 +1911,220 @@ function removeFromCart(index) {
   cart.splice(index, 1);
 
   renderCart();
-
 }
 
-window.removeFromCart = removeFromCart;
+
+// ============================================================
+// POS - CHECKOUT
+// ============================================================
+
+async function checkoutPos(paymentType) {
+
+  if (cart.length === 0) {
+
+    alert('Cart is empty.');
+
+    return;
+  }
+
+
+  const total =
+    cart.reduce(
+      function (sum, item) {
+
+        return sum +
+          item.price *
+          item.quantity;
+
+      },
+      0
+    );
+
+
+  let reservationId = null;
+
+
+  if (paymentType === 'room') {
+
+    if (!window.currentGuest) {
+
+      alert(
+        'Please select or check in a guest before charging to room.'
+      );
+
+      return;
+    }
+
+
+    reservationId =
+      window.currentGuest.id;
+  }
+
+
+  try {
+
+    const order = {
+
+      reservation_id: reservationId,
+
+      items: cart,
+
+      total: total,
+
+      payment_type:
+        paymentType === 'room'
+          ? 'Room Charge'
+          : 'Direct Pay'
+    };
+
+
+    const {
+      error
+    } = await supabase
+      .from('pos_orders')
+      .insert([order]);
+
+
+    if (error) {
+
+      console.error(
+        'POS checkout error:',
+        error
+      );
+
+      alert(
+        'Could not save POS order.\n\n' +
+        error.message
+      );
+
+      return;
+    }
+
+
+    alert(
+      `POS payment recorded.\n\nTotal: ${formatMoney(total)}`
+    );
+
+
+    cart = [];
+
+    renderCart();
+
+
+    await updateDashboard();
+
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Unexpected POS error:',
+      error
+    );
+
+    alert(
+      'Unexpected error:\n\n' +
+      error.message
+    );
+  }
+}
 
 
 // ============================================================
-// CLEAR ALL DATA
+// QUICK ADD EXPERIENCE
 // ============================================================
 
-async function clearAllData() {
+async function quickAddExperience(name, price) {
 
-  if (!confirm(
-    'Are you sure you want to clear ALL history? This will delete bookings, restaurant orders, and extra experiences.'
-  )) {
+  if (!window.currentGuest) {
+
+    alert(
+      'Please check in or select an active guest first.'
+    );
+
+    switchTab('reservations');
+
+    return;
+  }
+
+
+  const allowed =
+    isPostingAllowed();
+
+
+  if (!allowed) {
+
+    alert(
+      'Extra charges can only be posted to an active in-house guest.'
+    );
+
     return;
   }
 
 
   try {
 
-    const reservationDelete =
-      await supabase
-        .from('reservations')
-        .delete()
-        .neq('id', -1);
+    const experience = {
+
+      reservation_id:
+        window.currentGuest.id,
+
+      experience_name:
+        name,
+
+      amount:
+        Number(price)
+    };
 
 
-    if (reservationDelete.error) {
-      throw reservationDelete.error;
+    const {
+      error
+    } = await supabase
+      .from('experiences')
+      .insert([experience]);
+
+
+    if (error) {
+
+      console.error(
+        'Experience error:',
+        error
+      );
+
+      alert(
+        'Could not add extra charge.\n\n' +
+        error.message
+      );
+
+      return;
     }
 
 
-    const posDelete =
-      await supabase
-        .from('pos_orders')
-        .delete()
-        .neq('id', -1);
+    alert(
+      `${name} added to guest folio.\n\nAmount: ${formatMoney(price)}`
+    );
 
-
-    if (posDelete.error) {
-      throw posDelete.error;
-    }
-
-
-    const experienceDelete =
-      await supabase
-        .from('experiences')
-        .delete()
-        .neq('id', -1);
-
-
-    if (experienceDelete.error) {
-      throw experienceDelete.error;
-    }
-
-
-    window.currentGuest = null;
-
-
-    await loadReservations();
 
     await updateDashboard();
 
-
-    alert(
-      'All data cleared successfully!'
-    );
+    updateFolio();
 
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.error(
-      'Clear all data error:',
+      'Unexpected experience error:',
       error
     );
 
     alert(
-      'Could not clear all data: ' +
+      'Unexpected error:\n\n' +
       error.message
     );
-
   }
-
-}
-
-window.clearAllData = clearAllData;
-
-
-// ============================================================
-// DASHBOARD
-// ============================================================
-
-async function updateDashboard() {
-
-  try {
-
-    const todayStr =
-      getTodayString();
-
-    const currentMonthStr =
-      getCurrentMonthString();
-
-
-    const [
-      reservationsResult,
-      posResult,
-      experiencesResult
-    ] = await Promise.all([
-
-      supabase
-        .from('reservations')
-        .select('*'),
-
-      supabase
-        .from('pos_orders')
-        .select('*'),
-
-      supabase
-        .from('experiences')
-        .select('*')
-
-    ]);
-
-
-    if (reservationsResult.error) {
-      throw reservationsResult.error;
-    }
-
-    if (posResult.error) {
-      throw posResult.error;
-    }
-
-    if (experiencesResult.error) {
-      throw experiencesResult.error;
-    }
-
-
-    const reservations =
-      (reservationsResult.data || [])
-        .map(mapReservationFromSupabase);
-
-
-    const posOrders =
-      (posResult.data || [])
-        .map(mapPosOrderFromSupabase);
-
-
-    const experiences =
-      (experiencesResult.data || [])
-        .map(mapExperienceFromSupabase);
-
-
-    const inHouseGuests =
-      reservations.filter(r =>
-        r.status === 'Checked In' ||
-        r.status === 'in-house'
-      );
-
-
-    const futureBookings =
-      reservations.filter(r =>
-        r.status === 'Confirmed' ||
-        r.status === 'future'
-      );
-
-
-    const arrivalsToday =
-      reservations.filter(r =>
-        r.checkIn === todayStr
-      );
-
-
-    if (inHouseGuests.length > 0) {
-
-      window.currentGuest =
-        inHouseGuests[
-          inHouseGuests.length - 1
-        ];
-
-    } else {
-
-      window.currentGuest = null;
-
-    }
-
-
-    const todayRoomRev =
-      reservations
-
-        .filter(r =>
-          (
-            r.status === 'Checked In' ||
-            r.status === 'in-house'
-          )
-          ||
-          (
-            r.checkIn === todayStr &&
-            (
-              r.status === 'Checked Out' ||
-              r.status === 'checked-out'
-            )
-          )
-        )
-
-        .reduce(
-          (sum, r) =>
-            sum + Number(r.rate || 0),
-          0
-        );
-
-
-    const todayPosRev =
-      posOrders
-
-        .filter(o =>
-          o.date === todayStr
-        )
-
-        .reduce(
-          (sum, o) =>
-            sum + Number(o.amount || 0),
-          0
-        );
-
-
-    const todayExpRev =
-      experiences
-
-        .filter(e =>
-          e.date === todayStr
-        )
-
-        .reduce(
-          (sum, e) =>
-            sum + Number(e.amount || 0),
-          0
-        );
-
-
-    const dailyTotalRev =
-      todayRoomRev +
-      todayPosRev +
-      todayExpRev;
-
-
-    const monthRoomRev =
-      reservations
-
-        .filter(r =>
-          r.status !== 'cancelled' &&
-          r.status !== 'Cancelled'
-        )
-
-        .reduce(
-          (sum, r) =>
-            sum + Number(r.rate || 0),
-          0
-        );
-
-
-    const monthPosRev =
-      posOrders
-
-        .filter(o =>
-          o.date &&
-          o.date.startsWith(
-            currentMonthStr
-          )
-        )
-
-        .reduce(
-          (sum, o) =>
-            sum + Number(o.amount || 0),
-          0
-        );
-
-
-    const monthExpRev =
-      experiences
-
-        .filter(e =>
-          e.date &&
-          e.date.startsWith(
-            currentMonthStr
-          )
-        )
-
-        .reduce(
-          (sum, e) =>
-            sum + Number(e.amount || 0),
-          0
-        );
-
-
-    const monthlyTotalRev =
-      monthRoomRev +
-      monthPosRev +
-      monthExpRev;
-
-
-    setText(
-      'statInHouse',
-      inHouseGuests.length
-    );
-
-    setText(
-      'statFuture',
-      futureBookings.length
-    );
-
-    setText(
-      'statArrivals',
-      arrivalsToday.length
-    );
-
-    setText(
-      'statDailyRevenue',
-      `$ ${dailyTotalRev.toFixed(2)}`
-    );
-
-    setText(
-      'statMonthlyRevenue',
-      `$ ${monthlyTotalRev.toFixed(2)}`
-    );
-
-
-    setText(
-      'dashTodayRoom',
-      `$ ${todayRoomRev.toFixed(2)}`
-    );
-
-    setText(
-      'dashTodayPos',
-      `$ ${todayPosRev.toFixed(2)}`
-    );
-
-    setText(
-      'dashTodayExp',
-      `$ ${todayExpRev.toFixed(2)}`
-    );
-
-    setText(
-      'dashTodayTotal',
-      `$ ${dailyTotalRev.toFixed(2)}`
-    );
-
-
-    setText(
-      'dashMonthRoom',
-      `$ ${monthRoomRev.toFixed(2)}`
-    );
-
-    setText(
-      'dashMonthPos',
-      `$ ${monthPosRev.toFixed(2)}`
-    );
-
-    setText(
-      'dashMonthExp',
-      `$ ${monthExpRev.toFixed(2)}`
-    );
-
-    setText(
-      'dashMonthTotal',
-      `$ ${monthlyTotalRev.toFixed(2)}`
-    );
-
-
-    const folioRate =
-      window.currentGuest
-        ? Number(
-            window.currentGuest.rate || 0
-          )
-        : 0;
-
-
-    setText(
-      'folioAccomAmount',
-      `$ ${folioRate.toFixed(2)}`
-    );
-
-    setText(
-      'folioPosAmount',
-      `$ ${todayPosRev.toFixed(2)}`
-    );
-
-    setText(
-      'folioExpAmount',
-      `$ ${todayExpRev.toFixed(2)}`
-    );
-
-    setText(
-      'folioTotalBill',
-      `$ ${
-        (
-          folioRate +
-          todayPosRev +
-          todayExpRev
-        ).toFixed(2)
-      }`
-    );
-
-
-    const cabinStatusBadge =
-      document.getElementById(
-        'cabinStatusBadge'
-      );
-
-
-    if (cabinStatusBadge) {
-
-      if (inHouseGuests.length > 0) {
-
-        cabinStatusBadge.innerText =
-          'OCCUPIED';
-
-        cabinStatusBadge.className =
-          'px-3 py-1 bg-emerald-500 text-white rounded-full text-xs font-bold';
-
-      } else {
-
-        cabinStatusBadge.innerText =
-          'VACANT';
-
-        cabinStatusBadge.className =
-          'px-3 py-1 bg-slate-400 text-white rounded-full text-xs font-bold';
-
-      }
-
-    }
-
-
-  } catch (error) {
-
-    console.error(
-      'Dashboard error:',
-      error
-    );
-
-  }
-
-}
-
-
-// ============================================================
-// SMALL UI HELPER
-// ============================================================
-
-function setText(id, value) {
-
-  const element =
-    document.getElementById(id);
-
-  if (element) {
-    element.innerText = value;
-  }
-
 }
 
 
@@ -1544,653 +2134,183 @@ function setText(id, value) {
 
 function isPostingAllowed() {
 
-  if (
-    !window.currentGuest ||
-    (
-      window.currentGuest.status !== 'in-house' &&
-      window.currentGuest.status !== 'Checked In'
-    )
-  ) {
-
-    alert(
-      'Action Blocked: No guest is currently checked in. You cannot post charges to a vacant room or checked-out guest.'
-    );
-
+  if (!window.currentGuest) {
     return false;
-
   }
 
-  return true;
+
+  return isInHouse(
+    window.currentGuest
+  );
 }
 
 
 // ============================================================
-// QUICK EXPERIENCE
+// UPDATE FOLIO
 // ============================================================
 
-async function quickAddExperience(title, price) {
+async function updateFolio() {
 
-  if (!isPostingAllowed()) {
-    return;
-  }
+  if (!window.currentGuest) {
 
-
-  try {
-
-    const { error } =
-      await supabase
-        .from('experiences')
-        .insert({
-
-          name: title,
-
-          amount: Number(price),
-
-          date: getTodayString()
-
-        });
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    alert(
-      `Added ${title} ($${price}) to active folio.`
+    setText(
+      'folioAccomAmount',
+      '$ 0.00'
     );
 
-
-    await updateDashboard();
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    alert(
-      'Could not add experience: ' +
-      error.message
+    setText(
+      'folioPosAmount',
+      '$ 0.00'
     );
 
-  }
+    setText(
+      'folioExpAmount',
+      '$ 0.00'
+    );
 
-}
-
-window.quickAddExperience =
-  quickAddExperience;
-
-
-// ============================================================
-// POS CHECKOUT
-// ============================================================
-
-async function checkoutPos(type) {
-
-  if (
-    type === 'room' &&
-    !isPostingAllowed()
-  ) {
-    return;
-  }
-
-
-  if (cart.length === 0) {
-
-    alert(
-      'Please add items to cart before checking out.'
+    setText(
+      'folioTotalBill',
+      '$ 0.00'
     );
 
     return;
   }
 
 
-  const total =
-    cart.reduce(
-      (sum, item) =>
-        sum +
-        (
-          item.price *
-          item.qty
-        ),
+  const guest =
+    window.currentGuest;
+
+
+  const accommodation =
+    Number(
+      guest.rate ||
+      guest.amount ||
       0
     );
 
 
+  let posAmount = 0;
+
+  let expAmount = 0;
+
+
   try {
 
-    const { error } =
+    const posResult =
       await supabase
         .from('pos_orders')
-        .insert({
-
-          items: cart,
-
-          amount: total,
-
-          date: getTodayString(),
-
-          payment_method:
-            type === 'room'
-              ? 'Room Charge'
-              : 'Direct Pay'
-
-        });
+        .select('*');
 
 
-    if (error) {
-      throw error;
+    if (!posResult.error) {
+
+      const orders =
+        posResult.data || [];
+
+
+      posAmount =
+        orders
+          .filter(
+            function (order) {
+
+              return String(
+                order.reservation_id
+              ) === String(
+                guest.id
+              );
+            }
+          )
+          .reduce(
+            function (sum, order) {
+
+              return sum +
+                Number(
+                  order.total || 0
+                );
+
+            },
+            0
+          );
     }
 
 
-    alert(
-      `Payment of $${total} charged via ${
-        type === 'room'
-          ? 'Room Charge'
-          : 'Direct Pay'
-      }.`
-    );
-
-
-    cart = [];
-
-    renderCart();
-
-    await updateDashboard();
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    alert(
-      'Could not save POS order: ' +
-      error.message
-    );
-
-  }
-
-}
-
-window.checkoutPos = checkoutPos;
-
-
-// ============================================================
-// PRINT FOLIO INVOICE
-// ============================================================
-
-async function printFolioInvoice() {
-
-  let activeRes =
-    window.currentGuest;
-
-
-  if (!activeRes) {
-
-    const {
-      data,
-      error
-    } =
+    const expResult =
       await supabase
-        .from('reservations')
-        .select('*')
-        .order('id', {
-          ascending: false
-        });
+        .from('experiences')
+        .select('*');
 
 
-    if (!error && data) {
+    if (!expResult.error) {
 
-      const reservations =
-        data.map(
-          mapReservationFromSupabase
-        );
+      const experiences =
+        expResult.data || [];
 
 
-      const inHouseGuests =
-        reservations.filter(r =>
-          r.status === 'in-house' ||
-          r.status === 'Checked In'
-        );
+      expAmount =
+        experiences
+          .filter(
+            function (experience) {
 
+              return String(
+                experience.reservation_id
+              ) === String(
+                guest.id
+              );
+            }
+          )
+          .reduce(
+            function (sum, experience) {
 
-      activeRes =
-        inHouseGuests.length > 0
-          ? inHouseGuests[
-              inHouseGuests.length - 1
-            ]
-          : (
-              reservations.length > 0
-                ? reservations[0]
-                : null
-            );
+              return sum +
+                Number(
+                  experience.amount || 0
+                );
 
+            },
+            0
+          );
     }
 
   }
 
+  catch (error) {
 
-  const guestName =
-    activeRes
-      ? activeRes.guestName
-      : 'Valued Guest';
-
-
-  const roomRate =
-    activeRes
-      ? Number(activeRes.rate || 0)
-      : 0;
-
-
-  const packageType =
-    activeRes
-      ? (
-          activeRes.package ||
-          activeRes.packageType ||
-          'HB'
-        )
-      : 'HB';
-
-
-  const selection =
-    activeRes
-      ? activeRes.selection
-      : '2 adults';
-
-
-  let posOrders = [];
-
-  let experiences = [];
-
-
-  const posResult =
-    await supabase
-      .from('pos_orders')
-      .select('*');
-
-
-  if (!posResult.error) {
-
-    posOrders =
-      (posResult.data || [])
-        .map(mapPosOrderFromSupabase);
-
+    console.error(
+      'Folio load error:',
+      error
+    );
   }
 
 
-  const expResult =
-    await supabase
-      .from('experiences')
-      .select('*');
-
-
-  if (!expResult.error) {
-
-    experiences =
-      (expResult.data || [])
-        .map(mapExperienceFromSupabase);
-
-  }
-
-
-  let itemizedRows = '';
-
-  let posTotal = 0;
-
-  let expTotal = 0;
-
-
-  itemizedRows += `
-    <tr class="border-b">
-
-      <td class="py-3 px-3 font-semibold text-slate-800">
-        Accommodation (${packageType}) - ${selection}
-      </td>
-
-      <td class="py-3 px-3 text-center">
-        1 Night
-      </td>
-
-      <td class="py-3 px-3 text-right font-bold">
-        $ ${roomRate.toFixed(2)}
-      </td>
-
-    </tr>
-  `;
-
-
-  posOrders.forEach(order => {
-
-    if (
-      order.items &&
-      Array.isArray(order.items)
-    ) {
-
-      order.items.forEach(item => {
-
-        const lineCost =
-          Number(item.price || 0) *
-          Number(item.qty || 0);
-
-
-        posTotal += lineCost;
-
-
-        itemizedRows += `
-          <tr class="border-b text-slate-700">
-
-            <td class="py-2.5 px-3">
-              🍽️ ${item.name}
-            </td>
-
-            <td class="py-2.5 px-3 text-center font-medium">
-              x${item.qty}
-            </td>
-
-            <td class="py-2.5 px-3 text-right font-semibold">
-              $ ${lineCost.toFixed(2)}
-            </td>
-
-          </tr>
-        `;
-
-      });
-
-    }
-
-  });
-
-
-  experiences.forEach(exp => {
-
-    const amt =
-      Number(
-        exp.amount ||
-        exp.price ||
-        0
-      );
-
-
-    expTotal += amt;
-
-
-    itemizedRows += `
-      <tr class="border-b text-slate-700">
-
-        <td class="py-2.5 px-3">
-          ⭐ ${exp.name || exp.title} (Add-on)
-        </td>
-
-        <td class="py-2.5 px-3 text-center font-medium">
-          1
-        </td>
-
-        <td class="py-2.5 px-3 text-right font-semibold">
-          $ ${amt.toFixed(2)}
-        </td>
-
-      </tr>
-    `;
-
-  });
-
-
-  const grandTotal =
-    roomRate +
-    posTotal +
-    expTotal;
-
-
-  const printWindow =
-    window.open(
-      '',
-      '_blank',
-      'width=800,height=900'
-    );
-
-
-  if (!printWindow) {
-
-    alert(
-      'Pop-up blocked! Please allow pop-ups for this site to print invoices.'
-    );
-
-    return;
-
-  }
-
-
-  const baseUrl =
-    window.location.href.substring(
-      0,
-      window.location.href.lastIndexOf('/') + 1
-    );
-
-
-  const logoSrc =
-    `${baseUrl}wild-has%20logo.jpeg`;
-
-
-  const invoiceHTML = `
-
-    <!DOCTYPE html>
-
-    <html>
-
-    <head>
-
-      <base href="${baseUrl}">
-
-      <title>
-        Itemized Guest Invoice - Wild Hasthi Resort
-      </title>
-
-      <script src="https://cdn.tailwindcss.com"></script>
-
-    </head>
-
-    <body class="p-8 bg-white text-slate-800 font-sans">
-
-      <div class="max-w-2xl mx-auto border p-8 rounded-2xl shadow-sm">
-
-        <div class="flex justify-between items-center border-b pb-6 mb-6">
-
-          <div class="flex items-center gap-4">
-
-            <img
-              src="${logoSrc}"
-              alt="Wild Hasthi Logo"
-              class="h-24 w-auto object-contain"
-              onError="this.style.display='none'; document.getElementById('logoFallback').style.display='block';"
-            />
-
-            <div
-              id="logoFallback"
-              style="display:none;"
-              class="font-bold text-xl text-slate-800"
-            >
-              WILD HASTHI
-            </div>
-
-          </div>
-
-          <div class="text-right">
-
-            <h2 class="text-xl font-bold text-slate-800 uppercase tracking-wide">
-              GUEST INVOICE
-            </h2>
-
-            <p class="text-xs text-slate-500 font-medium">
-              Date: ${new Date().toLocaleDateString()}
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <div class="grid grid-cols-2 gap-4 text-sm mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
-
-          <div>
-
-            <p class="text-xs font-bold text-slate-400 uppercase">
-              Guest Name
-            </p>
-
-            <p class="font-bold text-slate-800 text-base">
-              ${guestName}
-            </p>
-
-          </div>
-
-          <div>
-
-            <p class="text-xs font-bold text-slate-400 uppercase">
-              Room / Accommodation
-            </p>
-
-            <p class="font-bold text-slate-800 text-base">
-              Cabin 01
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <h3 class="text-xs font-bold uppercase text-slate-400 mb-2 tracking-wider">
-          Itemized Folio Breakdown
-        </h3>
-
-
-        <table class="w-full text-left text-sm mb-6 border-collapse">
-
-          <thead>
-
-            <tr class="bg-slate-100 text-slate-600 text-xs uppercase font-bold border-b border-slate-200">
-
-              <th class="py-2.5 px-3">
-                Item Description
-              </th>
-
-              <th class="py-2.5 px-3 text-center">
-                Qty
-              </th>
-
-              <th class="py-2.5 px-3 text-right">
-                Amount ($)
-              </th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-            ${itemizedRows}
-          </tbody>
-
-        </table>
-
-
-        <div class="space-y-2 border-t-2 border-slate-900 pt-4 text-right">
-
-          <div class="flex justify-between text-sm text-slate-600">
-
-            <span>
-              Base Room Package Rate:
-            </span>
-
-            <span>
-              $ ${roomRate.toFixed(2)}
-            </span>
-
-          </div>
-
-
-          <div class="flex justify-between text-sm text-slate-600">
-
-            <span>
-              Posted Restaurant & Snacks Subtotal:
-            </span>
-
-            <span>
-              $ ${posTotal.toFixed(2)}
-            </span>
-
-          </div>
-
-
-          <div class="flex justify-between text-sm text-slate-600">
-
-            <span>
-              Posted Tours & Experiences Subtotal:
-            </span>
-
-            <span>
-              $ ${expTotal.toFixed(2)}
-            </span>
-
-          </div>
-
-
-          <div class="flex justify-between items-center text-lg font-black text-slate-900 border-t pt-3">
-
-            <span>
-              Grand Total Payable:
-            </span>
-
-            <span class="text-emerald-700 text-xl">
-              $ ${grandTotal.toFixed(2)}
-            </span>
-
-          </div>
-
-        </div>
-
-
-        <div class="mt-12 text-center text-xs text-slate-400 border-t pt-4">
-
-          <p>
-            Thank you for staying at Wild Hasthi Luxury Retreat - Sri Lanka!
-          </p>
-
-        </div>
-
-      </div>
-
-
-      <script>
-
-        window.onload = function() {
-
-          setTimeout(() => {
-
-            window.print();
-
-          }, 300);
-
-        }
-
-      </script>
-
-
-    </body>
-
-    </html>
-
-  `;
-
-
-  printWindow.document.write(
-    invoiceHTML
+  const total =
+    accommodation +
+    posAmount +
+    expAmount;
+
+
+  setText(
+    'folioAccomAmount',
+    formatMoney(accommodation)
   );
 
-  printWindow.document.close();
 
+  setText(
+    'folioPosAmount',
+    formatMoney(posAmount)
+  );
+
+
+  setText(
+    'folioExpAmount',
+    formatMoney(expAmount)
+  );
+
+
+  setText(
+    'folioTotalBill',
+    formatMoney(total)
+  );
 }
-
-window.printFolioInvoice =
-  printFolioInvoice;
 
 
 // ============================================================
@@ -2199,450 +2319,1629 @@ window.printFolioInvoice =
 
 async function performFinalCheckout() {
 
-  let activeRes =
+  if (!window.currentGuest) {
+
+    alert(
+      'Please select an active guest first.'
+    );
+
+    switchTab('reservations');
+
+    return;
+  }
+
+
+  const guest =
     window.currentGuest;
 
 
-  if (!activeRes) {
-
-    const {
-      data,
-      error
-    } =
-      await supabase
-        .from('reservations')
-        .select('*')
-        .order('id', {
-          ascending: false
-        });
-
-
-    if (!error && data) {
-
-      const reservations =
-        data.map(
-          mapReservationFromSupabase
-        );
-
-
-      const inHouseGuests =
-        reservations.filter(r =>
-          r.status === 'in-house' ||
-          r.status === 'Checked In'
-        );
-
-
-      if (inHouseGuests.length > 0) {
-
-        activeRes =
-          inHouseGuests[
-            inHouseGuests.length - 1
-          ];
-
-      }
-
-    }
-
-  }
-
-
-  if (!activeRes) {
-
-    alert(
-      'No active guest found to check out.'
+  const confirmed =
+    confirm(
+      `Check out ${guest.guest_name || 'guest'} and print the final bill?`
     );
 
+
+  if (!confirmed) {
     return;
-
-  }
-
-
-  if (
-    activeRes.status === 'checked-out' ||
-    activeRes.status === 'Checked Out'
-  ) {
-
-    alert(
-      'Guest is already checked out.'
-    );
-
-    return;
-
-  }
-
-
-  if (!confirm(
-    `Are you sure you want to check out ${activeRes.guestName} and print the final invoice?`
-  )) {
-
-    return;
-
-  }
-
-
-  const { error } =
-    await supabase
-      .from('reservations')
-      .update({
-        status: 'checked-out'
-      })
-      .eq('id', Number(activeRes.id));
-
-
-  if (error) {
-
-    console.error(error);
-
-    alert(
-      'Could not complete checkout: ' +
-      error.message
-    );
-
-    return;
-
-  }
-
-
-  window.currentGuest = null;
-
-
-  await updateDashboard();
-
-  await loadReservations();
-
-
-  await printFolioInvoice();
-
-
-  alert(
-    'Guest checked out successfully! The bill is finalized and status updated to Checked Out.'
-  );
-
-}
-
-window.performFinalCheckout =
-  performFinalCheckout;
-
-
-// ============================================================
-// CANCEL BOOKING
-// ============================================================
-
-async function cancelBooking(id) {
-
-  if (!confirm(
-    'Are you sure you want to cancel this booking?'
-  )) {
-
-    return;
-
-  }
-
-
-  const { error } =
-    await supabase
-      .from('reservations')
-      .update({
-        status: 'cancelled'
-      })
-      .eq('id', Number(id));
-
-
-  if (error) {
-
-    console.error(error);
-
-    alert(
-      'Could not cancel booking: ' +
-      error.message
-    );
-
-    return;
-
-  }
-
-
-  if (
-    window.currentGuest &&
-    window.currentGuest.id === Number(id)
-  ) {
-
-    window.currentGuest = null;
-
-  }
-
-
-  await updateDashboard();
-
-  await loadReservations();
-
-
-  alert(
-    'Booking has been cancelled.'
-  );
-
-}
-
-window.cancelBooking = cancelBooking;
-
-
-// ============================================================
-// RESERVATION ROW
-// ============================================================
-
-function renderReservationRow(res) {
-
-  const statusColors = {
-
-    'in-house':
-      'bg-emerald-100 text-emerald-800',
-
-    'Checked In':
-      'bg-emerald-100 text-emerald-800',
-
-    'future':
-      'bg-blue-100 text-blue-800',
-
-    'Confirmed':
-      'bg-blue-100 text-blue-800',
-
-    'checked-out':
-      'bg-slate-100 text-slate-700',
-
-    'Checked Out':
-      'bg-slate-100 text-slate-700',
-
-    'cancelled':
-      'bg-rose-100 text-rose-800',
-
-    'Cancelled':
-      'bg-rose-100 text-rose-800'
-
-  };
-
-
-  const badgeColor =
-    statusColors[res.status] ||
-    'bg-slate-100 text-slate-600';
-
-
-  const isCheckedOut =
-    res.status === 'checked-out' ||
-    res.status === 'Checked Out';
-
-
-  const isCancelled =
-    res.status === 'cancelled' ||
-    res.status === 'Cancelled';
-
-
-  let actionButtons = '';
-
-
-  if (
-    isCheckedOut ||
-    isCancelled
-  ) {
-
-    actionButtons = `
-
-      <button
-        onclick="reopenBooking(${res.id})"
-        class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold transition">
-
-        Unlock
-
-      </button>
-
-    `;
-
-  }
-
-  else if (
-    res.status === 'Confirmed' ||
-    res.status === 'future'
-  ) {
-
-    actionButtons = `
-
-      <button
-        onclick="checkInGuest(${res.id})"
-        class="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold transition">
-
-        Check In
-
-      </button>
-
-      <button
-        onclick="cancelBooking(${res.id})"
-        class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold transition">
-
-        Cancel
-
-      </button>
-
-    `;
-
-  }
-
-  else if (
-    res.status === 'Checked In' ||
-    res.status === 'in-house'
-  ) {
-
-    actionButtons = `
-
-      <button
-        onclick="checkoutGuestDirect(${res.id})"
-        class="px-2.5 py-1 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-[10px] font-bold transition">
-
-        Check Out
-
-      </button>
-
-      <button
-        onclick="cancelBooking(${res.id})"
-        class="px-2.5 py-1 bg-slate-500 hover:bg-slate-600 text-white rounded-lg text-[10px] font-bold transition">
-
-        Cancel
-
-      </button>
-
-    `;
-
-  }
-
-
-  return `
-
-    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-
-      <td class="p-4 font-bold text-slate-800">
-        ${res.guestName || ''}
-      </td>
-
-      <td class="p-4 text-slate-600 text-xs">
-        ${res.checkIn || ''} to ${res.checkOut || ''}
-      </td>
-
-      <td class="p-4 text-slate-600 text-xs capitalize">
-        ${res.selection || ''}
-      </td>
-
-      <td class="p-4 text-slate-600 text-xs">
-        ${res.package || res.packageType || ''}
-      </td>
-
-      <td class="p-4 font-bold text-slate-800">
-        $${Number(res.rate || 0).toFixed(2)}
-      </td>
-
-      <td class="p-4">
-
-        <span
-          class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${badgeColor}">
-
-          ${res.status}
-
-        </span>
-
-      </td>
-
-      <td class="p-4 text-center">
-
-        <div class="flex items-center justify-center gap-1">
-
-          ${actionButtons}
-
-          <button
-            onclick="deleteBooking(${res.id})"
-            class="px-2 py-1 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 rounded-lg text-[10px] font-bold transition"
-            title="Delete Booking Permanently">
-
-            <i class="fa-solid fa-trash"></i>
-            Delete
-
-          </button>
-
-        </div>
-
-      </td>
-
-    </tr>
-
-  `;
-
-}
-
-
-// ============================================================
-// DELETE BOOKING
-// ============================================================
-
-async function deleteBooking(id) {
-
-  if (!confirm(
-    'Are you sure you want to PERMANENTLY delete this booking?'
-  )) {
-
-    return;
-
   }
 
 
   try {
 
-    const { error } =
-      await supabase
-        .from('reservations')
-        .delete()
-        .eq('id', Number(id));
+    const {
+      error
+    } = await supabase
+      .from('reservations')
+      .update({
+        status: 'checked-out'
+      })
+      .eq('id', guest.id);
 
 
     if (error) {
-      throw error;
+
+      console.error(
+        'Final checkout error:',
+        error
+      );
+
+      alert(
+        'Could not check out guest.\n\n' +
+        error.message
+      );
+
+      return;
     }
 
 
-    if (
-      window.currentGuest &&
-      window.currentGuest.id === Number(id)
-    ) {
+    /*
+      Print BEFORE clearing currentGuest.
+    */
+    await printFolioInvoice(guest);
 
-      window.currentGuest = null;
 
-    }
+    window.currentGuest = null;
 
 
     await loadReservations();
 
     await updateDashboard();
 
+    updateFolio();
 
-    alert(
-      'Booking deleted successfully.'
-    );
+  }
 
-
-  } catch (error) {
+  catch (error) {
 
     console.error(
-      'Delete error:',
+      'Unexpected final checkout error:',
       error
     );
 
     alert(
-      'Could not delete record from database: ' +
+      'Unexpected error:\n\n' +
       error.message
+    );
+  }
+}
+
+
+// ============================================================
+// PRINT FOLIO INVOICE
+// ============================================================
+
+async function printFolioInvoice(reservationOverride = null) {
+
+  const guest =
+    reservationOverride ||
+    window.currentGuest;
+
+
+  if (!guest) {
+
+    alert(
+      'Please select an active guest first.'
+    );
+
+    return;
+  }
+
+
+  let posAmount = 0;
+
+  let expAmount = 0;
+
+  let posRows = '';
+
+  let expRows = '';
+
+
+  try {
+
+    const posResult =
+      await supabase
+        .from('pos_orders')
+        .select('*');
+
+
+    if (!posResult.error) {
+
+      const orders =
+        (posResult.data || [])
+          .filter(
+            function (order) {
+
+              return String(
+                order.reservation_id
+              ) === String(
+                guest.id
+              );
+            }
+          );
+
+
+      orders.forEach(
+        function (order) {
+
+          const amount =
+            Number(
+              order.total || 0
+            );
+
+
+          posAmount += amount;
+
+
+          let description =
+            'Restaurant POS';
+
+
+          if (
+            Array.isArray(order.items) &&
+            order.items.length
+          ) {
+
+            description =
+              order.items
+                .map(
+                  function (item) {
+
+                    return `${item.name} × ${item.quantity}`;
+                  }
+                )
+                .join(', ');
+          }
+
+
+          posRows += `
+            <tr>
+              <td>${escapeHtml(description)}</td>
+              <td style="text-align:right;">
+                ${formatMoney(amount)}
+              </td>
+            </tr>
+          `;
+        }
+      );
+    }
+
+
+    const expResult =
+      await supabase
+        .from('experiences')
+        .select('*');
+
+
+    if (!expResult.error) {
+
+      const experiences =
+        (expResult.data || [])
+          .filter(
+            function (experience) {
+
+              return String(
+                experience.reservation_id
+              ) === String(
+                guest.id
+              );
+            }
+          );
+
+
+      experiences.forEach(
+        function (experience) {
+
+          const amount =
+            Number(
+              experience.amount || 0
+            );
+
+
+          expAmount += amount;
+
+
+          expRows += `
+            <tr>
+              <td>${escapeHtml(
+                experience.experience_name ||
+                'Extra Experience'
+              )}</td>
+
+              <td style="text-align:right;">
+                ${formatMoney(amount)}
+              </td>
+            </tr>
+          `;
+        }
+      );
+    }
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Invoice data error:',
+      error
+    );
+  }
+
+
+  const accommodation =
+    Number(
+      guest.rate ||
+      guest.amount ||
+      0
+    );
+
+
+  const total =
+    accommodation +
+    posAmount +
+    expAmount;
+
+
+  const invoiceWindow =
+    window.open(
+      '',
+      '_blank',
+      'width=800,height=900'
+    );
+
+
+  if (!invoiceWindow) {
+
+    alert(
+      'Please allow pop-ups in your browser to print the invoice.'
+    );
+
+    return;
+  }
+
+
+  invoiceWindow.document.write(`
+
+    <!DOCTYPE html>
+
+    <html>
+
+    <head>
+
+      <title>
+        Wild Hasthi Guest Invoice
+      </title>
+
+      <style>
+
+        body {
+          font-family: Arial, sans-serif;
+          padding: 40px;
+          color: #1e293b;
+        }
+
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+
+        h1 {
+          margin: 0;
+          font-size: 28px;
+        }
+
+        h2 {
+          margin: 5px 0;
+          font-size: 15px;
+          color: #64748b;
+        }
+
+        .guest {
+          border: 1px solid #e2e8f0;
+          padding: 15px;
+          border-radius: 10px;
+          margin-bottom: 20px;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+        }
+
+        th,
+        td {
+          padding: 10px;
+          border-bottom: 1px solid #e2e8f0;
+          text-align: left;
+        }
+
+        th {
+          background: #f8fafc;
+        }
+
+        .total {
+          font-size: 20px;
+          font-weight: bold;
+          text-align: right;
+          margin-top: 25px;
+        }
+
+        .footer {
+          text-align: center;
+          margin-top: 50px;
+          color: #64748b;
+          font-size: 12px;
+        }
+
+      </style>
+
+    </head>
+
+
+    <body>
+
+      <div class="header">
+
+        <h1>
+          WILD HASTHI
+        </h1>
+
+        <h2>
+          Eco Resort & Safari Lodge
+        </h2>
+
+        <p>
+          Guest Final Invoice
+        </p>
+
+      </div>
+
+
+      <div class="guest">
+
+        <strong>
+          Guest:
+        </strong>
+
+        ${escapeHtml(
+          guest.guest_name ||
+          guest.name ||
+          'Guest'
+        )}
+
+        <br>
+
+        <strong>
+          Check-In:
+        </strong>
+
+        ${formatDate(guest.check_in)}
+
+        <br>
+
+        <strong>
+          Check-Out:
+        </strong>
+
+        ${formatDate(guest.check_out)}
+
+        <br>
+
+        <strong>
+          Occupancy:
+        </strong>
+
+        ${escapeHtml(
+          guest.occupancy ||
+          '-'
+        )}
+
+        <br>
+
+        <strong>
+          Package:
+        </strong>
+
+        ${escapeHtml(
+          guest.package ||
+          '-'
+        )}
+
+      </div>
+
+
+      <h3>
+        Accommodation
+      </h3>
+
+      <table>
+
+        <tr>
+
+          <td>
+            Accommodation Package
+          </td>
+
+          <td style="text-align:right;">
+            ${formatMoney(accommodation)}
+          </td>
+
+        </tr>
+
+      </table>
+
+
+      <h3>
+        Restaurant / POS
+      </h3>
+
+      <table>
+
+        ${posRows || `
+          <tr>
+            <td>
+              No POS charges
+            </td>
+            <td style="text-align:right;">
+              ${formatMoney(0)}
+            </td>
+          </tr>
+        `}
+
+      </table>
+
+
+      <h3>
+        Extra Experiences
+      </h3>
+
+      <table>
+
+        ${expRows || `
+          <tr>
+            <td>
+              No extra experiences
+            </td>
+            <td style="text-align:right;">
+              ${formatMoney(0)}
+            </td>
+          </tr>
+        `}
+
+      </table>
+
+
+      <div class="total">
+
+        TOTAL:
+        ${formatMoney(total)}
+
+      </div>
+
+
+      <div class="footer">
+
+        Thank you for staying with Wild Hasthi.
+
+        <br>
+
+        We hope to welcome you again.
+
+      </div>
+
+
+    </body>
+
+    </html>
+
+  `);
+
+
+  invoiceWindow.document.close();
+
+
+  invoiceWindow.focus();
+
+
+  setTimeout(
+    function () {
+
+      invoiceWindow.print();
+
+    },
+    500
+  );
+}
+
+
+// ============================================================
+// DAILY REVENUE REPORT
+// ============================================================
+
+async function printDailyRevenueReport() {
+
+  const today =
+    getTodayString();
+
+
+  let roomRevenue = 0;
+
+  let posRevenue = 0;
+
+  let expRevenue = 0;
+
+
+  try {
+
+    const reservationsResult =
+      await supabase
+        .from('reservations')
+        .select('*');
+
+
+    if (!reservationsResult.error) {
+
+      roomRevenue =
+        (reservationsResult.data || [])
+          .filter(
+            function (reservation) {
+
+              return (
+                reservation.check_in === today &&
+                !isCancelled(reservation)
+              );
+            }
+          )
+          .reduce(
+            function (sum, reservation) {
+
+              return sum +
+                Number(
+                  reservation.rate || 0
+                );
+
+            },
+            0
+          );
+    }
+
+
+    const posResult =
+      await supabase
+        .from('pos_orders')
+        .select('*');
+
+
+    if (!posResult.error) {
+
+      posRevenue =
+        (posResult.data || [])
+          .filter(
+            function (order) {
+
+              const created =
+                order.created_at ||
+                order.createdAt;
+
+
+              return created &&
+                String(created).slice(0, 10) === today;
+            }
+          )
+          .reduce(
+            function (sum, order) {
+
+              return sum +
+                Number(
+                  order.total || 0
+                );
+
+            },
+            0
+          );
+    }
+
+
+    const expResult =
+      await supabase
+        .from('experiences')
+        .select('*');
+
+
+    if (!expResult.error) {
+
+      expRevenue =
+        (expResult.data || [])
+          .filter(
+            function (experience) {
+
+              const created =
+                experience.created_at ||
+                experience.createdAt;
+
+
+              return created &&
+                String(created).slice(0, 10) === today;
+            }
+          )
+          .reduce(
+            function (sum, experience) {
+
+              return sum +
+                Number(
+                  experience.amount || 0
+                );
+
+            },
+            0
+          );
+    }
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Daily report error:',
+      error
+    );
+  }
+
+
+  printRevenueReport(
+    'Daily Revenue Report',
+    today,
+    roomRevenue,
+    posRevenue,
+    expRevenue
+  );
+}
+
+
+// ============================================================
+// MONTHLY REVENUE REPORT
+// ============================================================
+
+async function printMonthlyRevenueReport() {
+
+  const month =
+    getCurrentMonthString();
+
+
+  let roomRevenue = 0;
+
+  let posRevenue = 0;
+
+  let expRevenue = 0;
+
+
+  try {
+
+    const reservationsResult =
+      await supabase
+        .from('reservations')
+        .select('*');
+
+
+    if (!reservationsResult.error) {
+
+      roomRevenue =
+        (reservationsResult.data || [])
+          .filter(
+            function (reservation) {
+
+              return (
+                String(
+                  reservation.check_in || ''
+                ).slice(0, 7) === month &&
+                !isCancelled(reservation)
+              );
+            }
+          )
+          .reduce(
+            function (sum, reservation) {
+
+              return sum +
+                Number(
+                  reservation.rate || 0
+                );
+
+            },
+            0
+          );
+    }
+
+
+    const posResult =
+      await supabase
+        .from('pos_orders')
+        .select('*');
+
+
+    if (!posResult.error) {
+
+      posRevenue =
+        (posResult.data || [])
+          .filter(
+            function (order) {
+
+              const created =
+                order.created_at ||
+                order.createdAt;
+
+
+              return created &&
+                String(created).slice(0, 7) === month;
+            }
+          )
+          .reduce(
+            function (sum, order) {
+
+              return sum +
+                Number(
+                  order.total || 0
+                );
+
+            },
+            0
+          );
+    }
+
+
+    const expResult =
+      await supabase
+        .from('experiences')
+        .select('*');
+
+
+    if (!expResult.error) {
+
+      expRevenue =
+        (expResult.data || [])
+          .filter(
+            function (experience) {
+
+              const created =
+                experience.created_at ||
+                experience.createdAt;
+
+
+              return created &&
+                String(created).slice(0, 7) === month;
+            }
+          )
+          .reduce(
+            function (sum, experience) {
+
+              return sum +
+                Number(
+                  experience.amount || 0
+                );
+
+            },
+            0
+          );
+    }
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Monthly report error:',
+      error
+    );
+  }
+
+
+  printRevenueReport(
+    'Monthly Revenue Report',
+    month,
+    roomRevenue,
+    posRevenue,
+    expRevenue
+  );
+}
+
+
+// ============================================================
+// GENERIC REVENUE PRINT
+// ============================================================
+
+function printRevenueReport(
+  title,
+  period,
+  room,
+  pos,
+  exp
+) {
+
+  const total =
+    Number(room) +
+    Number(pos) +
+    Number(exp);
+
+
+  const reportWindow =
+    window.open(
+      '',
+      '_blank',
+      'width=800,height=800'
+    );
+
+
+  if (!reportWindow) {
+
+    alert(
+      'Please allow pop-ups in your browser.'
+    );
+
+    return;
+  }
+
+
+  reportWindow.document.write(`
+
+    <!DOCTYPE html>
+
+    <html>
+
+    <head>
+
+      <title>
+        ${escapeHtml(title)}
+      </title>
+
+      <style>
+
+        body {
+          font-family: Arial, sans-serif;
+          padding: 40px;
+          color: #1e293b;
+        }
+
+        h1 {
+          margin-bottom: 5px;
+        }
+
+        .period {
+          color: #64748b;
+          margin-bottom: 30px;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        td {
+          padding: 15px;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .total {
+          font-size: 22px;
+          font-weight: bold;
+          margin-top: 25px;
+          text-align: right;
+        }
+
+        .footer {
+          margin-top: 50px;
+          color: #64748b;
+          font-size: 12px;
+          text-align: center;
+        }
+
+      </style>
+
+    </head>
+
+
+    <body>
+
+      <h1>
+        WILD HASTHI
+      </h1>
+
+      <h2>
+        ${escapeHtml(title)}
+      </h2>
+
+      <div class="period">
+        Period: ${escapeHtml(period)}
+      </div>
+
+
+      <table>
+
+        <tr>
+          <td>
+            Room Packages
+          </td>
+
+          <td style="text-align:right;">
+            ${formatMoney(room)}
+          </td>
+        </tr>
+
+
+        <tr>
+          <td>
+            Restaurant / POS
+          </td>
+
+          <td style="text-align:right;">
+            ${formatMoney(pos)}
+          </td>
+        </tr>
+
+
+        <tr>
+          <td>
+            Extra Experiences
+          </td>
+
+          <td style="text-align:right;">
+            ${formatMoney(exp)}
+          </td>
+        </tr>
+
+      </table>
+
+
+      <div class="total">
+
+        Total Revenue:
+        ${formatMoney(total)}
+
+      </div>
+
+
+      <div class="footer">
+
+        Wild Hasthi Eco Resort & Safari Lodge
+
+      </div>
+
+
+    </body>
+
+    </html>
+
+  `);
+
+
+  reportWindow.document.close();
+
+
+  reportWindow.focus();
+
+
+  setTimeout(
+    function () {
+
+      reportWindow.print();
+
+    },
+    500
+  );
+}
+
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+
+async function updateDashboard() {
+
+  if (!isSupabaseReady()) {
+    return;
+  }
+
+
+  const reservations =
+    Array.isArray(window.reservations)
+      ? window.reservations
+      : [];
+
+
+  const today =
+    getTodayString();
+
+
+  const month =
+    getCurrentMonthString();
+
+
+  const activeReservations =
+    reservations.filter(
+      function (reservation) {
+
+        return !isCancelled(reservation);
+      }
+    );
+
+
+  const inHouse =
+    activeReservations.filter(
+      isInHouse
+    );
+
+
+  const future =
+    activeReservations.filter(
+      isFutureBooking
+    );
+
+
+  const arrivals =
+    activeReservations.filter(
+      function (reservation) {
+
+        return (
+          reservation.check_in === today &&
+          !isCheckedOut(reservation)
+        );
+      }
+    );
+
+
+  setText(
+    'statInHouse',
+    inHouse.length
+  );
+
+
+  setText(
+    'statFuture',
+    future.length
+  );
+
+
+  setText(
+    'statArrivals',
+    arrivals.length
+  );
+
+
+  let todayRoom = 0;
+
+  let monthRoom = 0;
+
+  let todayPos = 0;
+
+  let monthPos = 0;
+
+  let todayExp = 0;
+
+  let monthExp = 0;
+
+
+  // ----------------------------------------------------------
+  // ROOM REVENUE
+  // ----------------------------------------------------------
+
+  activeReservations.forEach(
+    function (reservation) {
+
+      const rate =
+        Number(
+          reservation.rate || 0
+        );
+
+
+      if (
+        reservation.check_in === today
+      ) {
+
+        todayRoom += rate;
+      }
+
+
+      if (
+        String(
+          reservation.check_in || ''
+        ).slice(0, 7) === month
+      ) {
+
+        monthRoom += rate;
+      }
+    }
+  );
+
+
+  // ----------------------------------------------------------
+  // POS REVENUE
+  // ----------------------------------------------------------
+
+  try {
+
+    const {
+      data: orders,
+      error: posError
+    } = await supabase
+      .from('pos_orders')
+      .select('*');
+
+
+    if (!posError) {
+
+      (orders || []).forEach(
+        function (order) {
+
+          const created =
+            order.created_at ||
+            order.createdAt;
+
+
+          if (!created) {
+            return;
+          }
+
+
+          const date =
+            String(created).slice(0, 10);
+
+
+          const orderMonth =
+            String(created).slice(0, 7);
+
+
+          const amount =
+            Number(
+              order.total || 0
+            );
+
+
+          if (date === today) {
+
+            todayPos += amount;
+          }
+
+
+          if (orderMonth === month) {
+
+            monthPos += amount;
+          }
+        }
+      );
+    }
+
+
+    // --------------------------------------------------------
+    // EXPERIENCES
+    // --------------------------------------------------------
+
+    const {
+      data: experiences,
+      error: expError
+    } = await supabase
+      .from('experiences')
+      .select('*');
+
+
+    if (!expError) {
+
+      (experiences || []).forEach(
+        function (experience) {
+
+          const created =
+            experience.created_at ||
+            experience.createdAt;
+
+
+          if (!created) {
+            return;
+          }
+
+
+          const date =
+            String(created).slice(0, 10);
+
+
+          const experienceMonth =
+            String(created).slice(0, 7);
+
+
+          const amount =
+            Number(
+              experience.amount || 0
+            );
+
+
+          if (date === today) {
+
+            todayExp += amount;
+          }
+
+
+          if (
+            experienceMonth === month
+          ) {
+
+            monthExp += amount;
+          }
+        }
+      );
+    }
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Dashboard revenue error:',
+      error
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // TOTALS
+  // ----------------------------------------------------------
+
+  const todayTotal =
+    todayRoom +
+    todayPos +
+    todayExp;
+
+
+  const monthTotal =
+    monthRoom +
+    monthPos +
+    monthExp;
+
+
+  setText(
+    'statDailyRevenue',
+    formatMoney(todayTotal)
+  );
+
+
+  setText(
+    'statMonthlyRevenue',
+    formatMoney(monthTotal)
+  );
+
+
+  setText(
+    'dashTodayRoom',
+    formatMoney(todayRoom)
+  );
+
+
+  setText(
+    'dashTodayPos',
+    formatMoney(todayPos)
+  );
+
+
+  setText(
+    'dashTodayExp',
+    formatMoney(todayExp)
+  );
+
+
+  setText(
+    'dashTodayTotal',
+    formatMoney(todayTotal)
+  );
+
+
+  setText(
+    'dashMonthRoom',
+    formatMoney(monthRoom)
+  );
+
+
+  setText(
+    'dashMonthPos',
+    formatMoney(monthPos)
+  );
+
+
+  setText(
+    'dashMonthExp',
+    formatMoney(monthExp)
+  );
+
+
+  setText(
+    'dashMonthTotal',
+    formatMoney(monthTotal)
+  );
+
+
+  // ----------------------------------------------------------
+  // CABIN STATUS
+  // ----------------------------------------------------------
+
+  updateCabinStatus(inHouse);
+}
+
+
+// ============================================================
+// CABIN STATUS
+// ============================================================
+
+function updateCabinStatus(inHouse) {
+
+  const badge =
+    document.getElementById(
+      'cabinStatusBadge'
+    );
+
+
+  const housekeeping =
+    document.getElementById(
+      'housekeepingBadge'
+    );
+
+
+  if (!badge) {
+    return;
+  }
+
+
+  if (inHouse.length > 0) {
+
+    badge.textContent =
+      'OCCUPIED';
+
+
+    badge.className =
+      'px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-bold';
+
+
+    if (housekeeping) {
+
+      housekeeping.textContent =
+        'IN SERVICE';
+
+
+      housekeeping.className =
+        'py-1 px-3 bg-blue-100 text-blue-800 rounded-xl font-bold';
+    }
+
+  }
+
+  else {
+
+    badge.textContent =
+      'VACANT';
+
+
+    badge.className =
+      'px-3 py-1 bg-slate-400 text-white rounded-full text-xs font-bold';
+
+
+    if (housekeeping) {
+
+      housekeeping.textContent =
+        'CLEAN / READY';
+
+
+      housekeeping.className =
+        'py-1 px-3 bg-emerald-100 text-emerald-800 rounded-xl font-bold';
+    }
+  }
+}
+
+
+// ============================================================
+// CLEAR ALL DATA
+// ============================================================
+
+async function clearAllData() {
+
+  const confirmed =
+    confirm(
+      'WARNING!\n\nThis will permanently delete ALL reservations, POS orders and extra experiences.\n\nContinue?'
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  const secondConfirm =
+    confirm(
+      'FINAL WARNING!\n\nAll history and revenue data will be permanently deleted.'
+    );
+
+
+  if (!secondConfirm) {
+    return;
+  }
+
+
+  try {
+
+    const tables = [
+      'reservations',
+      'pos_orders',
+      'experiences'
+    ];
+
+
+    for (
+      const table of tables
+    ) {
+
+      const {
+        error
+      } = await supabase
+        .from(table)
+        .delete()
+        .neq('id', -1);
+
+
+      if (error) {
+
+        console.error(
+          `Clear ${table} error:`,
+          error
+        );
+
+        alert(
+          `Could not clear ${table}.\n\n${error.message}`
+        );
+
+        return;
+      }
+    }
+
+
+    window.currentGuest = null;
+
+    window.reservations = [];
+
+    cart = [];
+
+
+    renderCart();
+
+    renderReservations();
+
+    updateFolio();
+
+    await updateDashboard();
+
+
+    alert(
+      'All history and revenue data has been cleared.'
     );
 
   }
 
-}
+  catch (error) {
 
-window.deleteBooking = deleteBooking;
+    console.error(
+      'Clear all error:',
+      error
+    );
+
+    alert(
+      'Unexpected error:\n\n' +
+      error.message
+    );
+  }
+}
 
 
 // ============================================================
-// END
+// HELPER - SET TEXT
+// ============================================================
+
+function setText(id, value) {
+
+  const element =
+    document.getElementById(id);
+
+
+  if (element) {
+
+    element.textContent =
+      value;
+  }
+}
+
+
+// ============================================================
+// HELPER - ESCAPE HTML
+// ============================================================
+
+function escapeHtml(value) {
+
+  if (value === null ||
+      value === undefined) {
+
+    return '';
+  }
+
+
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+
+// ============================================================
+// EXPOSE FUNCTIONS FOR HTML ONCLICK
+// ============================================================
+
+window.handleLogin =
+  handleLogin;
+
+window.logout =
+  logout;
+
+window.switchTab =
+  switchTab;
+
+window.openModal =
+  openModal;
+
+window.closeModal =
+  closeModal;
+
+window.saveReservation =
+  saveReservation;
+
+window.updateCalculatedRate =
+  updateCalculatedRate;
+
+window.filterReservations =
+  filterReservations;
+
+window.directCheckIn =
+  directCheckIn;
+
+window.selectGuestForFolio =
+  selectGuestForFolio;
+
+window.reopenReservation =
+  reopenReservation;
+
+window.cancelBooking =
+  cancelBooking;
+
+window.deleteBooking =
+  deleteBooking;
+
+window.addToCart =
+  addToCart;
+
+window.removeFromCart =
+  removeFromCart;
+
+window.checkoutPos =
+  checkoutPos;
+
+window.quickAddExperience =
+  quickAddExperience;
+
+window.performFinalCheckout =
+  performFinalCheckout;
+
+window.printFolioInvoice =
+  printFolioInvoice;
+
+window.printDailyRevenueReport =
+  printDailyRevenueReport;
+
+window.printMonthlyRevenueReport =
+  printMonthlyRevenueReport;
+
+window.clearAllData =
+  clearAllData;
+
+
+// ============================================================
+// END OF WILD HASTHI POS
 // ============================================================
