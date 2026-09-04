@@ -2210,8 +2210,7 @@ async function checkoutPos(
       total:
         total,
 
-      payment_type:
-        paymentType === 'room'
+      payment_method: paymentType === 'room'
           ? 'Room Charge'
           : 'Direct Pay'
 
