@@ -10,29 +10,45 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- SUPABASE JS -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- SUPABASE CONNECTION -->
-<script>
-  const SUPABASE_URL = 'https://eeuyrldhudoakitwhgwr.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_P_iX0-BEI7YyRth833IpBQ_z5oYEtny';
+  <!-- SUPABASE CONNECTION -->
+  <script>
+    const SUPABASE_URL = 'https://eeuyrldhudoakitwhgwr.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_P_iX0-BEI7YyRth833IpBQ_z5oYEtny';
 
-  window.supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_PUBLISHABLE_KEY
-  );
+    window.supabaseClient = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
 
-  // Make the client available to app.js
-  window.supabaseApp = window.supabaseClient;
-</script>
+    window.supabaseApp = window.supabaseClient;
+  </script>
+
   <!-- Font Awesome -->
-    <link
+  <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
   >
 
-  <!-- MOBILE POS OPTIMIZATION -->
+  <!-- =========================================================
+       MOBILE POS OPTIMIZATION
+       ========================================================= -->
   <style>
+
+    /* =========================================================
+       DEFAULT MOBILE NAVIGATION
+       Hidden on desktop
+       ========================================================= */
+
+    .mobile-nav {
+      display: none;
+    }
+
+
+    /* =========================================================
+       MOBILE
+       ========================================================= */
 
     @media (max-width: 768px) {
 
@@ -40,63 +56,188 @@
         overflow-x: hidden;
       }
 
+
+      /* MAIN APP */
+
       .flex.h-screen.overflow-hidden {
         display: block !important;
         height: 100dvh !important;
         overflow: hidden !important;
       }
 
+
+      /* HIDE DESKTOP SIDEBAR */
+
       aside {
         display: none !important;
       }
+
+
+      /* MAIN CONTENT */
 
       main.flex-1 {
         width: 100% !important;
         height: 100dvh !important;
         overflow-y: auto !important;
+
+        /* Space for mobile navigation at top */
+        padding-top: 68px !important;
       }
+
+
+      /* =======================================================
+         MOBILE TOP NAVIGATION
+         ======================================================= */
+
+      .mobile-nav {
+        display: flex !important;
+
+        position: fixed !important;
+
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: auto !important;
+
+        width: 100% !important;
+        height: 68px !important;
+
+        background: #ffffff !important;
+
+        border-bottom: 1px solid #e2e8f0 !important;
+
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.10) !important;
+
+        z-index: 9999 !important;
+
+        justify-content: space-around !important;
+        align-items: center !important;
+
+        padding: 5px 4px !important;
+      }
+
+
+      .mobile-nav button {
+        flex: 1 !important;
+
+        height: 58px !important;
+
+        border: none !important;
+
+        background: transparent !important;
+
+        color: #64748b !important;
+
+        display: flex !important;
+
+        flex-direction: column !important;
+
+        align-items: center !important;
+
+        justify-content: center !important;
+
+        gap: 4px !important;
+
+        font-size: 9px !important;
+
+        font-weight: 700 !important;
+
+        border-radius: 12px !important;
+
+        cursor: pointer !important;
+
+        padding: 4px !important;
+      }
+
+
+      .mobile-nav button i {
+        display: block !important;
+
+        font-size: 18px !important;
+
+        line-height: 1 !important;
+      }
+
+
+      .mobile-nav button span {
+        display: block !important;
+
+        line-height: 1 !important;
+      }
+
+
+      .mobile-nav button:hover {
+        background: #f0fdf4 !important;
+        color: #047857 !important;
+      }
+
+
+      .mobile-nav button:active {
+        background: #ecfdf5 !important;
+        color: #047857 !important;
+        transform: scale(0.96);
+      }
+
+
+      /* HEADER */
 
       header {
         padding: 12px 14px !important;
         min-height: 64px;
       }
 
+
       header h2 {
         font-size: 17px !important;
       }
 
+
       header p {
         font-size: 9px !important;
       }
+
 
       header button {
         padding: 9px 10px !important;
         font-size: 10px !important;
       }
 
+
+      /* PAGE CONTENT */
+
       main > div.p-8 {
         padding: 12px !important;
       }
 
-      /* Dashboard cards */
+
+      /* =======================================================
+         DASHBOARD CARDS
+         ======================================================= */
+
       .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-5 {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: 8px !important;
       }
+
 
       .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-5 > div {
         padding: 12px !important;
         border-radius: 14px !important;
       }
 
+
       .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-5 h3 {
         font-size: 18px !important;
       }
+
+
+      /* DASHBOARD MIDDLE SECTION */
 
       .grid.grid-cols-1.lg\:grid-cols-3 {
         grid-template-columns: 1fr !important;
         gap: 12px !important;
       }
+
 
       .bg-white.p-6,
       .bg-white.p-5 {
@@ -104,17 +245,26 @@
         border-radius: 16px !important;
       }
 
-      /* Experiences */
+
+      /* =======================================================
+         EXPERIENCES
+         ======================================================= */
+
       button[onclick*="quickAddExperience"] {
         min-height: 62px !important;
         padding: 12px !important;
       }
 
-      /* Restaurant POS */
+
+      /* =======================================================
+         RESTAURANT POS
+         ======================================================= */
+
       #view-pos .grid.grid-cols-2.sm\:grid-cols-3 {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: 8px !important;
       }
+
 
       #view-pos button[onclick*="addToCart"] {
         min-height: 82px !important;
@@ -122,55 +272,78 @@
         border-radius: 14px !important;
       }
 
+
       #posCartItems {
         max-height: 240px !important;
       }
+
 
       #view-pos button[onclick*="checkoutPos"] {
         min-height: 52px !important;
         font-size: 11px !important;
       }
 
+
       #posCartTotal {
         font-size: 20px !important;
       }
 
-      /* Safari */
+
+      /* =======================================================
+         SAFARI / EXPERIENCES
+         ======================================================= */
+
       #view-safari button {
         min-height: 78px !important;
         padding: 14px !important;
       }
 
-      /* Guest Folio */
+
+      /* =======================================================
+         GUEST FOLIO
+         ======================================================= */
+
       #folioTotalBill {
         font-size: 18px !important;
       }
+
 
       #view-folio button {
         min-height: 54px !important;
         font-size: 11px !important;
       }
 
-      /* Reservations */
+
+      /* =======================================================
+         RESERVATIONS
+         ======================================================= */
+
       #view-reservations .overflow-x-auto {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
       }
 
+
       #view-reservations table {
         min-width: 720px;
       }
+
 
       #view-reservations button {
         min-height: 40px;
       }
 
-      /* New Reservation */
+
+      /* =======================================================
+         NEW RESERVATION MODAL
+         ======================================================= */
+
       #modalNewReservation {
         padding: 10px !important;
         align-items: flex-start !important;
         overflow-y: auto !important;
       }
+
 
       #modalNewReservation > div {
         width: 100% !important;
@@ -182,36 +355,49 @@
         overflow-y: auto;
       }
 
+
       #reservationForm input,
       #reservationForm select {
         min-height: 46px !important;
         font-size: 16px !important;
       }
 
+
       #reservationForm button {
         min-height: 46px !important;
       }
 
-      /* Login */
+
+      /* =======================================================
+         LOGIN
+         ======================================================= */
+
       #loginOverlay {
         padding: 16px !important;
       }
+
 
       #loginOverlay > div {
         padding: 22px !important;
         border-radius: 22px !important;
       }
 
+
       #loginOverlay input {
         min-height: 48px !important;
         font-size: 16px !important;
       }
 
+
       #loginOverlay button {
         min-height: 50px !important;
       }
 
-      /* Touch friendly */
+
+      /* =======================================================
+         TOUCH FRIENDLY
+         ======================================================= */
+
       button,
       select,
       input,
@@ -219,9 +405,11 @@
         -webkit-tap-highlight-color: transparent;
       }
 
+
       button {
         touch-action: manipulation;
       }
+
 
       input,
       select,
@@ -229,40 +417,75 @@
         font-size: 16px !important;
       }
 
-      /* Revenue */
+
+      /* =======================================================
+         REVENUE
+         ======================================================= */
+
       #view-dashboard .md\:grid-cols-2 {
         grid-template-columns: 1fr !important;
       }
 
     }
 
-    /* Small phones */
+
+    /* =========================================================
+       SMALL PHONES
+       ========================================================= */
+
     @media (max-width: 390px) {
+
+      .mobile-nav {
+        height: 64px !important;
+      }
+
+
+      .mobile-nav button {
+        height: 56px !important;
+        font-size: 8px !important;
+      }
+
+
+      .mobile-nav button i {
+        font-size: 17px !important;
+      }
+
+
+      main.flex-1 {
+        padding-top: 64px !important;
+      }
+
 
       header {
         padding: 10px !important;
       }
+
 
       header button {
         padding: 8px !important;
         font-size: 9px !important;
       }
 
+
       main > div.p-8 {
         padding: 8px !important;
       }
+
 
       .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-5 {
         gap: 6px !important;
       }
 
+
       .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-5 > div {
         padding: 10px !important;
       }
 
+
       #view-pos .grid.grid-cols-2.sm\:grid-cols-3 {
         gap: 6px !important;
       }
+
 
       #view-pos button[onclick*="addToCart"] {
         min-height: 76px !important;
@@ -275,7 +498,10 @@
 
 </head>
 
+
 <body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen">
+
+
   <!-- =========================================================
        LOGIN OVERLAY
        ========================================================= -->
@@ -297,15 +523,18 @@
           <i class="fa-solid fa-lock"></i>
         </div>
 
+
         <h2 class="text-2xl font-black text-slate-900 uppercase tracking-wide">
           Wild Hasthi
         </h2>
+
 
         <p class="text-xs text-slate-500 font-medium">
           Sign in to access Dashboard
         </p>
 
       </div>
+
 
       <form
         onsubmit="handleLogin(event)"
@@ -323,6 +552,7 @@
             class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
           >
 
+
           <input
             type="password"
             id="pinInput"
@@ -333,6 +563,7 @@
           >
 
         </div>
+
 
         <button
           type="submit"
@@ -354,6 +585,7 @@
 
   <div class="flex h-screen overflow-hidden">
 
+
     <!-- =======================================================
          SIDEBAR NAVIGATION
          ======================================================= -->
@@ -363,6 +595,7 @@
     >
 
       <div class="space-y-6">
+
 
         <!-- LOGO -->
 
@@ -374,6 +607,7 @@
             🐘
           </div>
 
+
           <div>
 
             <h1
@@ -381,6 +615,7 @@
             >
               Wild Hasthi
             </h1>
+
 
             <p class="text-[10px] text-slate-400">
               Resort & Safari Lodge
@@ -395,6 +630,7 @@
 
         <nav class="space-y-1">
 
+
           <button
             id="nav-dashboard"
             onclick="switchTab('dashboard')"
@@ -403,6 +639,7 @@
             <i class="fa-solid fa-chart-line w-4"></i>
             Dashboard
           </button>
+
 
           <button
             id="nav-reservations"
@@ -413,6 +650,7 @@
             Bookings
           </button>
 
+
           <button
             id="nav-pos"
             onclick="switchTab('pos')"
@@ -422,6 +660,7 @@
             Restaurant POS
           </button>
 
+
           <button
             id="nav-safari"
             onclick="switchTab('safari')"
@@ -430,6 +669,7 @@
             <i class="fa-solid fa-compass w-4"></i>
             Extra Experiences
           </button>
+
 
           <button
             id="nav-folio"
@@ -468,6 +708,7 @@
 
     <main class="flex-1 flex flex-col overflow-y-auto">
 
+
       <!-- TOP BAR -->
 
       <header
@@ -482,6 +723,7 @@
           >
             Dashboard
           </h2>
+
 
           <p
             id="currentDateDisplay"
@@ -502,6 +744,7 @@
             + Charge Extra Add-on
           </button>
 
+
           <button
             onclick="openModal('modalNewReservation')"
             class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition"
@@ -518,6 +761,7 @@
 
       <div class="p-8 space-y-6">
 
+
         <!-- ===================================================
              VIEW 1: DASHBOARD
              =================================================== -->
@@ -527,18 +771,22 @@
           class="tab-view space-y-6"
         >
 
+
           <!-- TOP STAT CARDS -->
 
           <div
             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
           >
 
+
             <div
               class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"
             >
+
               <p class="text-xs font-bold text-slate-400 uppercase">
                 In-House Guests
               </p>
+
 
               <h3
                 id="statInHouse"
@@ -546,15 +794,18 @@
               >
                 0
               </h3>
+
             </div>
 
 
             <div
               class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"
             >
+
               <p class="text-xs font-bold text-slate-400 uppercase">
                 Future Bookings
               </p>
+
 
               <h3
                 id="statFuture"
@@ -562,15 +813,18 @@
               >
                 0
               </h3>
+
             </div>
 
 
             <div
               class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"
             >
+
               <p class="text-xs font-bold text-slate-400 uppercase">
                 Arrivals Today
               </p>
+
 
               <h3
                 id="statArrivals"
@@ -578,15 +832,18 @@
               >
                 0
               </h3>
+
             </div>
 
 
             <div
               class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"
             >
+
               <p class="text-xs font-bold text-slate-400 uppercase">
                 Daily Revenue (Today)
               </p>
+
 
               <h3
                 id="statDailyRevenue"
@@ -594,15 +851,18 @@
               >
                 $ 0.00
               </h3>
+
             </div>
 
 
             <div
               class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"
             >
+
               <p class="text-xs font-bold text-slate-400 uppercase">
                 Monthly Revenue
               </p>
+
 
               <h3
                 id="statMonthlyRevenue"
@@ -610,6 +870,7 @@
               >
                 $ 0.00
               </h3>
+
             </div>
 
           </div>
@@ -620,6 +881,7 @@
           <div
             class="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
+
 
             <!-- EXPERIENCES -->
 
@@ -633,6 +895,7 @@
                   Additional Experiences & Extra Snacks ($50 Each)
                 </h3>
 
+
                 <span class="text-xs font-semibold text-slate-400">
                   Post Extra Charge to Active Room
                 </span>
@@ -644,10 +907,12 @@
                 class="grid grid-cols-1 sm:grid-cols-3 gap-3"
               >
 
+
                 <button
                   onclick="quickAddExperience('Sithulpawwa Tour', 50)"
                   class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 rounded-xl text-left transition"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🏛️ Sithulpawwa Tour
                   </div>
@@ -655,6 +920,7 @@
                   <div class="text-[10px] text-emerald-700 font-bold">
                     $ 50.00 (Extra)
                   </div>
+
                 </button>
 
 
@@ -662,6 +928,7 @@
                   onclick="quickAddExperience('Fishing Experience', 50)"
                   class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 rounded-xl text-left transition"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🎣 Fishing Experience
                   </div>
@@ -669,6 +936,7 @@
                   <div class="text-[10px] text-emerald-700 font-bold">
                     $ 50.00 (Extra)
                   </div>
+
                 </button>
 
 
@@ -676,6 +944,7 @@
                   onclick="quickAddExperience('Nature Explorations', 50)"
                   class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 rounded-xl text-left transition"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🌿 Nature Explorations
                   </div>
@@ -683,6 +952,7 @@
                   <div class="text-[10px] text-emerald-700 font-bold">
                     $ 50.00 (Extra)
                   </div>
+
                 </button>
 
 
@@ -690,6 +960,7 @@
                   onclick="quickAddExperience('Extra Snack 01', 50)"
                   class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 rounded-xl text-left transition"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🥪 Extra Snack 01
                   </div>
@@ -697,6 +968,7 @@
                   <div class="text-[10px] text-emerald-700 font-bold">
                     $ 50.00 (Extra)
                   </div>
+
                 </button>
 
 
@@ -704,6 +976,7 @@
                   onclick="quickAddExperience('Extra Snack 02', 50)"
                   class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 rounded-xl text-left transition"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🥗 Extra Snack 02
                   </div>
@@ -711,19 +984,25 @@
                   <div class="text-[10px] text-emerald-700 font-bold">
                     $ 50.00 (Extra)
                   </div>
-                </button>
-<button
-  onclick="quickAddExperience('Soft Drinks', 4)"
-  class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 rounded-xl text-left transition"
->
-  <div class="font-bold text-slate-800 text-xs">
-    🥤 Soft Drinks
-  </div>
 
-  <div class="text-[10px] text-emerald-700 font-bold">
-    $ 4.00 (Extra)
-  </div>
-</button>
+                </button>
+
+
+                <button
+                  onclick="quickAddExperience('Soft Drinks', 4)"
+                  class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 rounded-xl text-left transition"
+                >
+
+                  <div class="font-bold text-slate-800 text-xs">
+                    🥤 Soft Drinks
+                  </div>
+
+                  <div class="text-[10px] text-emerald-700 font-bold">
+                    $ 4.00 (Extra)
+                  </div>
+
+                </button>
+
               </div>
 
             </div>
@@ -745,6 +1024,7 @@
                     Cabin 01 Live Status
                   </h3>
 
+
                   <span
                     id="cabinStatusBadge"
                     class="px-3 py-1 bg-slate-400 text-white rounded-full text-xs font-bold"
@@ -762,6 +1042,7 @@
                     <span class="text-slate-500">
                       Housekeeping Status
                     </span>
+
 
                     <span
                       id="housekeepingBadge"
@@ -785,6 +1066,7 @@
                 >
                   Open POS / Restaurant
                 </button>
+
 
                 <button
                   onclick="printFolioInvoice()"
@@ -815,6 +1097,7 @@
               class="grid grid-cols-1 md:grid-cols-2 gap-6"
             >
 
+
               <!-- DAILY -->
 
               <div
@@ -831,6 +1114,7 @@
                     Today's Revenue Breakdown
                   </p>
 
+
                   <button
                     onclick="printDailyRevenueReport()"
                     class="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-bold rounded-lg transition flex items-center gap-1"
@@ -843,46 +1127,57 @@
 
 
                 <div class="flex justify-between text-xs">
+
                   <span>Room Package:</span>
+
                   <span
                     id="dashTodayRoom"
                     class="font-bold"
                   >
                     $ 0.00
                   </span>
+
                 </div>
 
 
                 <div class="flex justify-between text-xs">
+
                   <span>Restaurant/POS:</span>
+
                   <span
                     id="dashTodayPos"
                     class="font-bold"
                   >
                     $ 0.00
                   </span>
+
                 </div>
 
 
                 <div class="flex justify-between text-xs">
+
                   <span>Extra Experiences:</span>
+
                   <span
                     id="dashTodayExp"
                     class="font-bold"
                   >
                     $ 0.00
                   </span>
+
                 </div>
 
 
                 <div
                   class="flex justify-between text-sm font-black border-t pt-2 text-emerald-700"
                 >
+
                   <span>Daily Total:</span>
 
                   <span id="dashTodayTotal">
                     $ 0.00
                   </span>
+
                 </div>
 
               </div>
@@ -904,18 +1199,23 @@
                     Monthly Revenue Breakdown
                   </p>
 
+
                   <button
                     onclick="printMonthlyRevenueReport()"
                     class="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white text-[10px] font-bold rounded-lg transition flex items-center gap-1"
                   >
+
                     <i class="fa-solid fa-print"></i>
+
                     Print Monthly Report
+
                   </button>
 
                 </div>
 
 
                 <div class="flex justify-between text-xs">
+
                   <span>Room Packages:</span>
 
                   <span
@@ -924,10 +1224,12 @@
                   >
                     $ 0.00
                   </span>
+
                 </div>
 
 
                 <div class="flex justify-between text-xs">
+
                   <span>Restaurant/POS:</span>
 
                   <span
@@ -936,10 +1238,12 @@
                   >
                     $ 0.00
                   </span>
+
                 </div>
 
 
                 <div class="flex justify-between text-xs">
+
                   <span>Extra Experiences:</span>
 
                   <span
@@ -948,17 +1252,20 @@
                   >
                     $ 0.00
                   </span>
+
                 </div>
 
 
                 <div
                   class="flex justify-between text-sm font-black border-t pt-2 text-emerald-800"
                 >
+
                   <span>Monthly Total:</span>
 
                   <span id="dashMonthTotal">
                     $ 0.00
                   </span>
+
                 </div>
 
               </div>
@@ -997,6 +1304,7 @@
                   All Bookings
                 </button>
 
+
                 <button
                   onclick="filterReservations('in-house')"
                   id="filter-in-house"
@@ -1004,6 +1312,7 @@
                 >
                   In-House
                 </button>
+
 
                 <button
                   onclick="filterReservations('future')"
@@ -1013,6 +1322,7 @@
                   Upcoming Future
                 </button>
 
+
                 <button
                   onclick="filterReservations('checked-out')"
                   id="filter-checked-out"
@@ -1020,6 +1330,7 @@
                 >
                   History
                 </button>
+
 
                 <button
                   onclick="filterReservations('cancelled')"
@@ -1036,8 +1347,11 @@
                 onclick="clearAllData()"
                 class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 ml-2"
               >
+
                 <i class="fa-solid fa-trash-can"></i>
+
                 Clear All History & Revenue
+
               </button>
 
             </div>
@@ -1139,10 +1453,12 @@
                 class="grid grid-cols-2 sm:grid-cols-3 gap-3"
               >
 
+
                 <button
                   onclick="addToCart('Breakfast Package', 15)"
                   class="p-4 bg-white hover:bg-emerald-50 border border-slate-200 rounded-2xl text-left transition shadow-sm"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🍳 Breakfast Package
                   </div>
@@ -1152,6 +1468,7 @@
                   >
                     $ 15.00
                   </div>
+
                 </button>
 
 
@@ -1159,6 +1476,7 @@
                   onclick="addToCart('Lunch / Curry Set', 25)"
                   class="p-4 bg-white hover:bg-emerald-50 border border-slate-200 rounded-2xl text-left transition shadow-sm"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🍛 Lunch / Curry Set
                   </div>
@@ -1168,6 +1486,7 @@
                   >
                     $ 25.00
                   </div>
+
                 </button>
 
 
@@ -1175,6 +1494,7 @@
                   onclick="addToCart('Dinner BBQ', 35)"
                   class="p-4 bg-white hover:bg-emerald-50 border border-slate-200 rounded-2xl text-left transition shadow-sm"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🥩 Dinner BBQ
                   </div>
@@ -1184,6 +1504,7 @@
                   >
                     $ 35.00
                   </div>
+
                 </button>
 
 
@@ -1191,6 +1512,7 @@
                   onclick="addToCart('Fresh Juice / Beverage', 5)"
                   class="p-4 bg-white hover:bg-emerald-50 border border-slate-200 rounded-2xl text-left transition shadow-sm"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
                     🍹 Fresh Juice
                   </div>
@@ -1200,13 +1522,17 @@
                   >
                     $ 5.00
                   </div>
+
                 </button>
-<button
+
+
+                <button
                   onclick="addToCart('Tea', 10)"
                   class="p-4 bg-white hover:bg-emerald-50 border border-slate-200 rounded-2xl text-left transition shadow-sm"
                 >
+
                   <div class="font-bold text-slate-800 text-xs">
-                    🥩 Tea 
+                    ☕ Tea
                   </div>
 
                   <div
@@ -1214,7 +1540,9 @@
                   >
                     $ 10.00
                   </div>
+
                 </button>
+
               </div>
 
             </div>
@@ -1233,6 +1561,7 @@
                 >
                   Current Order Cart
                 </h3>
+
 
                 <div
                   id="posCartItems"
@@ -1262,6 +1591,7 @@
                     Total Amount:
                   </span>
 
+
                   <span
                     id="posCartTotal"
                     class="text-emerald-700"
@@ -1282,6 +1612,7 @@
                   >
                     Charge to Room
                   </button>
+
 
                   <button
                     onclick="checkoutPos('direct')"
@@ -1324,6 +1655,7 @@
             <div
               class="grid grid-cols-1 sm:grid-cols-2 gap-4"
             >
+
 
               <button
                 onclick="quickAddExperience('Yala Safari Tour', 120)"
@@ -1393,11 +1725,13 @@
 
             <div class="space-y-2 text-xs">
 
+
               <div class="flex justify-between">
 
                 <span>
                   Accommodation Package:
                 </span>
+
 
                 <span
                   id="folioAccomAmount"
@@ -1415,6 +1749,7 @@
                   Restaurant & POS Charges:
                 </span>
 
+
                 <span
                   id="folioPosAmount"
                   class="font-bold"
@@ -1430,6 +1765,7 @@
                 <span>
                   Extra Tours & Activities:
                 </span>
+
 
                 <span
                   id="folioExpAmount"
@@ -1448,6 +1784,7 @@
                 <span>
                   Total Folio Bill:
                 </span>
+
 
                 <span id="folioTotalBill">
                   $ 0.00
@@ -1479,33 +1816,57 @@
 
     </main>
 
-    <!-- MOBILE NAVIGATION -->
+
+    <!-- =========================================================
+         MOBILE NAVIGATION
+         THIS IS SHOWN ONLY ON PHONES
+         ========================================================= -->
+
     <div
       class="mobile-nav"
       id="mobileNav"
     >
 
-      <button onclick="switchTab('dashboard')">
+      <button
+        type="button"
+        onclick="switchTab('dashboard')"
+      >
         <i class="fa-solid fa-chart-line"></i>
         <span>Home</span>
       </button>
 
-      <button onclick="switchTab('reservations')">
+
+      <button
+        type="button"
+        onclick="switchTab('reservations')"
+      >
         <i class="fa-solid fa-calendar-check"></i>
         <span>Bookings</span>
       </button>
 
-      <button onclick="switchTab('pos')">
+
+      <button
+        type="button"
+        onclick="switchTab('pos')"
+      >
         <i class="fa-solid fa-utensils"></i>
         <span>POS</span>
       </button>
 
-      <button onclick="switchTab('safari')">
+
+      <button
+        type="button"
+        onclick="switchTab('safari')"
+      >
         <i class="fa-solid fa-compass"></i>
         <span>Experiences</span>
       </button>
 
-      <button onclick="switchTab('folio')">
+
+      <button
+        type="button"
+        onclick="switchTab('folio')"
+      >
         <i class="fa-solid fa-receipt"></i>
         <span>Folio</span>
       </button>
@@ -1515,275 +1876,290 @@
   </div>
 
 
- <!-- =========================================================
-     MODAL: NEW RESERVATION
-     ========================================================= -->
-
-<div
-  id="modalNewReservation"
-  class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden"
->
+  <!-- =========================================================
+       MODAL: NEW RESERVATION
+       ========================================================= -->
 
   <div
-    class="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full space-y-4"
+    id="modalNewReservation"
+    class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden"
   >
 
     <div
-      class="flex justify-between items-center border-b pb-3"
+      class="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full space-y-4"
     >
 
-      <h3 class="font-bold text-slate-800 text-sm">
-        New Reservation
-      </h3>
-
-      <button
-        type="button"
-        onclick="closeModal('modalNewReservation')"
-        class="text-slate-400 hover:text-slate-600 text-xs font-bold"
-      >
-        ✕
-      </button>
-
-    </div>
-
-
-    <!-- RESERVATION FORM -->
-
-    <form
-      id="reservationForm"
-      onsubmit="saveReservation(event)"
-      class="space-y-3 text-xs"
-    >
-
-      <!-- GUEST NAME -->
-
-      <div>
-
-        <label
-          class="font-bold text-slate-600 block mb-1"
-        >
-          Guest Full Name
-        </label>
-
-        <input
-          type="text"
-          id="resGuestName"
-          required
-          class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-        >
-
-      </div>
-
-
-      <!-- DATES -->
-
       <div
-        class="grid grid-cols-2 gap-3"
+        class="flex justify-between items-center border-b pb-3"
       >
 
-        <div>
+        <h3 class="font-bold text-slate-800 text-sm">
+          New Reservation
+        </h3>
 
-          <label
-            class="font-bold text-slate-600 block mb-1"
-          >
-            Check-In
-          </label>
-
-          <input
-            type="date"
-            id="resCheckIn"
-            required
-            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-          >
-
-        </div>
-
-
-        <div>
-
-          <label
-            class="font-bold text-slate-600 block mb-1"
-          >
-            Check-Out
-          </label>
-
-          <input
-            type="date"
-            id="resCheckOut"
-            required
-            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-          >
-
-        </div>
-
-      </div>
-
-
-      <!-- OCCUPANCY / PACKAGE -->
-
-      <div
-        class="grid grid-cols-2 gap-3"
-      >
-
-        <div>
-
-          <label
-            class="font-bold text-slate-600 block mb-1"
-          >
-            Occupancy Selection
-          </label>
-
-          <select
-            id="resSelection"
-            onchange="updateCalculatedRate()"
-            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-          >
-
-            <option value="1 adult">
-              1 Adult
-            </option>
-
-            <option
-              value="2 adults"
-              selected
-            >
-              2 Adults
-            </option>
-
-            <option value="3 adults">
-              3 Adults
-            </option>
-
-            <option value="2 adults + 1 child 6-11">
-              2 Adults + 1 Child (6-11)
-            </option>
-
-            <option value="2 adults + 2 children 6-11">
-              2 Adults + 2 Children (6-11)
-            </option>
-
-          </select>
-
-        </div>
-
-
-        <div>
-
-          <label
-            class="font-bold text-slate-600 block mb-1"
-          >
-            Board Basis
-          </label>
-
-          <select
-            id="resPackage"
-            onchange="updateCalculatedRate()"
-            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-          >
-
-            <option
-              value="HB"
-              selected
-            >
-              Half Board (HB)
-            </option>
-
-            <option value="AI">
-              All Inclusive (AI)
-            </option>
-
-          </select>
-
-        </div>
-
-      </div>
-
-
-      <!-- SAFARI -->
-
-      <div>
-
-        <label
-          class="font-bold text-slate-600 block mb-1"
-        >
-          Safari Inclusion
-        </label>
-
-        <select
-          id="resSafari"
-          class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-        >
-
-          <option value="None">
-            None
-          </option>
-
-          <option value="Yala Safari">
-            Yala Safari Tour Included
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <!-- RATE -->
-
-      <div>
-
-        <label
-          class="font-bold text-slate-600 block mb-1"
-        >
-          Calculated Package Rate ($)
-        </label>
-
-        <input
-          type="number"
-          id="resRate"
-          readonly
-          class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-black text-emerald-800"
-        >
-
-      </div>
-
-
-      <!-- BUTTONS -->
-
-      <div
-        class="pt-2 flex justify-end gap-2"
-      >
 
         <button
           type="button"
           onclick="closeModal('modalNewReservation')"
-          class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold"
+          class="text-slate-400 hover:text-slate-600 text-xs font-bold"
         >
-          Cancel
-        </button>
-
-
-        <button
-          type="submit"
-          class="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold"
-        >
-          Save Booking
+          ✕
         </button>
 
       </div>
 
-    </form>
+
+      <!-- RESERVATION FORM -->
+
+      <form
+        id="reservationForm"
+        onsubmit="saveReservation(event)"
+        class="space-y-3 text-xs"
+      >
+
+
+        <!-- GUEST NAME -->
+
+        <div>
+
+          <label
+            class="font-bold text-slate-600 block mb-1"
+          >
+            Guest Full Name
+          </label>
+
+
+          <input
+            type="text"
+            id="resGuestName"
+            required
+            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+          >
+
+        </div>
+
+
+        <!-- DATES -->
+
+        <div
+          class="grid grid-cols-2 gap-3"
+        >
+
+          <div>
+
+            <label
+              class="font-bold text-slate-600 block mb-1"
+            >
+              Check-In
+            </label>
+
+
+            <input
+              type="date"
+              id="resCheckIn"
+              required
+              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+            >
+
+          </div>
+
+
+          <div>
+
+            <label
+              class="font-bold text-slate-600 block mb-1"
+            >
+              Check-Out
+            </label>
+
+
+            <input
+              type="date"
+              id="resCheckOut"
+              required
+              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+            >
+
+          </div>
+
+        </div>
+
+
+        <!-- OCCUPANCY / PACKAGE -->
+
+        <div
+          class="grid grid-cols-2 gap-3"
+        >
+
+          <div>
+
+            <label
+              class="font-bold text-slate-600 block mb-1"
+            >
+              Occupancy Selection
+            </label>
+
+
+            <select
+              id="resSelection"
+              onchange="updateCalculatedRate()"
+              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+            >
+
+              <option value="1 adult">
+                1 Adult
+              </option>
+
+
+              <option
+                value="2 adults"
+                selected
+              >
+                2 Adults
+              </option>
+
+
+              <option value="3 adults">
+                3 Adults
+              </option>
+
+
+              <option value="2 adults + 1 child 6-11">
+                2 Adults + 1 Child (6-11)
+              </option>
+
+
+              <option value="2 adults + 2 children 6-11">
+                2 Adults + 2 Children (6-11)
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div>
+
+            <label
+              class="font-bold text-slate-600 block mb-1"
+            >
+              Board Basis
+            </label>
+
+
+            <select
+              id="resPackage"
+              onchange="updateCalculatedRate()"
+              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+            >
+
+              <option
+                value="HB"
+                selected
+              >
+                Half Board (HB)
+              </option>
+
+
+              <option value="AI">
+                All Inclusive (AI)
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+        <!-- SAFARI -->
+
+        <div>
+
+          <label
+            class="font-bold text-slate-600 block mb-1"
+          >
+            Safari Inclusion
+          </label>
+
+
+          <select
+            id="resSafari"
+            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+          >
+
+            <option value="None">
+              None
+            </option>
+
+
+            <option value="Yala Safari">
+              Yala Safari Tour Included
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <!-- RATE -->
+
+        <div>
+
+          <label
+            class="font-bold text-slate-600 block mb-1"
+          >
+            Calculated Package Rate ($)
+          </label>
+
+
+          <input
+            type="number"
+            id="resRate"
+            readonly
+            class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-black text-emerald-800"
+          >
+
+        </div>
+
+
+        <!-- BUTTONS -->
+
+        <div
+          class="pt-2 flex justify-end gap-2"
+        >
+
+          <button
+            type="button"
+            onclick="closeModal('modalNewReservation')"
+            class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold"
+          >
+            Cancel
+          </button>
+
+
+          <button
+            type="submit"
+            class="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold"
+          >
+            Save Booking
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
 
   </div>
 
-</div>
 
+  <!-- =========================================================
+       APPLICATION JAVASCRIPT
+       IMPORTANT: app.js MUST BE LAST
+       ========================================================= -->
 
-<!-- =========================================================
-     APPLICATION JAVASCRIPT
-     IMPORTANT: app.js MUST BE LAST
-     ========================================================= -->
-
-<script src="app.js"></script>
+  <script src="app.js"></script>
 
 </body>
-</html> 
+</html>
