@@ -28,18 +28,18 @@ const RATE_MATRIX = {
   },
 
   '3 adults': {
-    HB: 405,
-    AI: 530
+    HB: 380,
+    AI: 480
   },
 
   '2 adults + 1 child 6-11': {
-    HB: 370,
-    AI: 485
+    HB: 355,
+    AI: 400
   },
 
   '2 adults + 2 children 6-11': {
-    HB: 410,
-    AI: 540
+    HB: 380,
+    AI: 480
   }
 };
 
