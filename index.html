@@ -1515,58 +1515,83 @@
   </div>
 
 
-  <!-- =========================================================
-       MODAL: NEW RESERVATION
-       ========================================================= -->
+ <!-- =========================================================
+     MODAL: NEW RESERVATION
+     ========================================================= -->
+
+<div
+  id="modalNewReservation"
+  class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden"
+>
 
   <div
-    id="modalNewReservation"
-    class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden"
+    class="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full space-y-4"
   >
 
     <div
-      class="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full space-y-4"
+      class="flex justify-between items-center border-b pb-3"
     >
 
-      <div
-        class="flex justify-between items-center border-b pb-3"
+      <h3 class="font-bold text-slate-800 text-sm">
+        New Reservation
+      </h3>
+
+      <button
+        type="button"
+        onclick="closeModal('modalNewReservation')"
+        class="text-slate-400 hover:text-slate-600 text-xs font-bold"
       >
+        ✕
+      </button>
 
-        <h3 class="font-bold text-slate-800 text-sm">
-          New Reservation
-        </h3>
+    </div>
 
-        <button
-          onclick="closeModal('modalNewReservation')"
-          class="text-slate-400 hover:text-slate-600 text-xs font-bold"
+
+    <!-- RESERVATION FORM -->
+
+    <form
+      id="reservationForm"
+      onsubmit="saveReservation(event)"
+      class="space-y-3 text-xs"
+    >
+
+      <!-- GUEST NAME -->
+
+      <div>
+
+        <label
+          class="font-bold text-slate-600 block mb-1"
         >
-          ✕
-        </button>
+          Guest Full Name
+        </label>
+
+        <input
+          type="text"
+          id="resGuestName"
+          required
+          class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+        >
 
       </div>
 
 
-      <!-- RESERVATION FORM -->
+      <!-- DATES -->
 
-      <form
-        id="reservationForm"
-        onsubmit="saveReservation(event)"
-        class="space-y-3 text-xs"
+      <div
+        class="grid grid-cols-2 gap-3"
       >
-
-        <!-- GUEST NAME -->
 
         <div>
 
           <label
             class="font-bold text-slate-600 block mb-1"
           >
-            Guest Full Name
+            Check-In
           </label>
 
           <input
-            type="text"
-            id="resGuestName"
+            type="date"
+            id="resCheckIn"
             required
             class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
           >
@@ -1574,151 +1599,67 @@
         </div>
 
 
-        <!-- DATES -->
+        <div>
 
-        <div
-          class="grid grid-cols-2 gap-3"
-        >
+          <label
+            class="font-bold text-slate-600 block mb-1"
+          >
+            Check-Out
+          </label>
 
-          <div>
-
-            <label
-              class="font-bold text-slate-600 block mb-1"
-            >
-              Check-In
-            </label>
-
-            <input
-              type="date"
-              id="resCheckIn"
-              required
-              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-            >
-
-          </div>
-
-
-          <div>
-
-            <label
-              class="font-bold text-slate-600 block mb-1"
-            >
-              Check-Out
-            </label>
-
-            <input
-              type="date"
-              id="resCheckOut"
-              required
-              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-            >
-
-          </div>
+          <input
+            type="date"
+            id="resCheckOut"
+            required
+            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+          >
 
         </div>
 
-
-        <!-- OCCUPANCY / PACKAGE -->
-
-        <div
-          class="grid grid-cols-2 gap-3"
-        >
-
-          <div>
-
-            <label
-              class="font-bold text-slate-600 block mb-1"
-            >
-              Occupancy Selection
-            </label>
-
-            <select
-              id="resSelection"
-              onchange="updateCalculatedRate()"
-              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-            >
-
-              <option value="1 adult">
-                1 Adult
-              </option>
-
-              <option
-                value="2 adults"
-                selected
-              >
-                2 Adults
-              </option>
-
-              <option value="3 adults">
-                3 Adults
-              </option>
-
-              <option value="2 adults + 1 child 6-11">
-                2 Adults + 1 Child (6-11)
-              </option>
-
-              <option value="2 adults + 2 children 6-11">
-                2 Adults + 2 Children (6-11)
-              </option>
-
-            </select>
-
-          </div>
+      </div>
 
 
-          <div>
+      <!-- OCCUPANCY / PACKAGE -->
 
-            <label
-              class="font-bold text-slate-600 block mb-1"
-            >
-              Board Basis
-            </label>
-
-            <select
-              id="resPackage"
-              onchange="updateCalculatedRate()"
-              class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-            >
-
-              <option
-                value="HB"
-                selected
-              >
-                Half Board (HB)
-              </option>
-
-              <option value="AI">
-                All Inclusive (AI)
-              </option>
-
-            </select>
-
-          </div>
-
-        </div>
-
-
-        <!-- SAFARI -->
+      <div
+        class="grid grid-cols-2 gap-3"
+      >
 
         <div>
 
           <label
             class="font-bold text-slate-600 block mb-1"
           >
-            Safari Inclusion
+            Occupancy Selection
           </label>
 
           <select
-            id="resSafari"
+            id="resSelection"
+            onchange="updateCalculatedRate()"
             class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
           >
 
-            <option value="None">
-              None
+            <option value="1 adult">
+              1 Adult
             </option>
 
-            <option value="Yala Safari">
-              Yala Safari Tour Included
+            <option
+              value="2 adults"
+              selected
+            >
+              2 Adults
+            </option>
+
+            <option value="3 adults">
+              3 Adults
+            </option>
+
+            <option value="2 adults + 1 child 6-11">
+              2 Adults + 1 Child (6-11)
+            </option>
+
+            <option value="2 adults + 2 children 6-11">
+              2 Adults + 2 Children (6-11)
             </option>
 
           </select>
@@ -1726,60 +1667,123 @@
         </div>
 
 
-        <!-- RATE -->
-
         <div>
 
           <label
             class="font-bold text-slate-600 block mb-1"
           >
-            Calculated Package Rate ($)
+            Board Basis
           </label>
 
-          <input
-            type="number"
-            id="resRate"
-            readonly
-            class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-black text-emerald-800"
+          <select
+            id="resPackage"
+            onchange="updateCalculatedRate()"
+            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
           >
+
+            <option
+              value="HB"
+              selected
+            >
+              Half Board (HB)
+            </option>
+
+            <option value="AI">
+              All Inclusive (AI)
+            </option>
+
+          </select>
 
         </div>
 
+      </div>
 
-        <!-- BUTTONS -->
 
-        <div
-          class="pt-2 flex justify-end gap-2"
+      <!-- SAFARI -->
+
+      <div>
+
+        <label
+          class="font-bold text-slate-600 block mb-1"
+        >
+          Safari Inclusion
+        </label>
+
+        <select
+          id="resSafari"
+          class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
         >
 
-          <button
-            type="button"
-            onclick="closeModal('modalNewReservation')"
-            class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold"
-          >
-            Cancel
-          </button>
+          <option value="None">
+            None
+          </option>
+
+          <option value="Yala Safari">
+            Yala Safari Tour Included
+          </option>
+
+        </select>
+
+      </div>
 
 
-          <button
-            type="submit"
-            class="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold"
-          >
-            Save Booking
-          </button>
+      <!-- RATE -->
 
-        </div>
+      <div>
 
-      </form>
+        <label
+          class="font-bold text-slate-600 block mb-1"
+        >
+          Calculated Package Rate ($)
+        </label>
 
-    </div>
+        <input
+          type="number"
+          id="resRate"
+          readonly
+          class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-black text-emerald-800"
+        >
 
-  <!-- =========================================================
-       APPLICATION JAVASCRIPT
-       IMPORTANT: app.js MUST BE LAST
-       ========================================================= -->
+      </div>
 
-  <script src="app.js"></script>
+
+      <!-- BUTTONS -->
+
+      <div
+        class="pt-2 flex justify-end gap-2"
+      >
+
+        <button
+          type="button"
+          onclick="closeModal('modalNewReservation')"
+          class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold"
+        >
+          Cancel
+        </button>
+
+
+        <button
+          type="submit"
+          class="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold"
+        >
+          Save Booking
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================================
+     APPLICATION JAVASCRIPT
+     IMPORTANT: app.js MUST BE LAST
+     ========================================================= -->
+
+<script src="app.js"></script>
 
 </body>
-</html>
+</html> 
