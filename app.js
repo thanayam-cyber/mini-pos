@@ -2292,88 +2292,79 @@ async function checkoutPos(payment_method) {
 // QUICK ADD EXPERIENCE
 // ============================================================
 
-async function quickAddExperience(
-  name,
-  price
-) {
+async function quickAddExperience(name, price) {
 
+  if (!isSupabaseReady()) {
+    alert('Supabase is not connected.');
+    return;
+  }
+
+  // A guest must be selected
   if (!window.currentGuest) {
-
-    alert(
-      'Please check in or select an active guest first.'
-    );
-
-    switchTab(
-      'reservations'
-    );
-
+    alert('Please select a guest first.');
     return;
   }
 
-
+  // Guest must currently be in-house
   if (!isPostingAllowed()) {
-
-    alert(
-      'Extra charges can only be posted to an active in-house guest.'
-    );
-
+    alert('The selected guest is not currently in-house.');
     return;
   }
-
 
   try {
 
-    const supabase =
-      getSupabase();
+    const supabase = getSupabase();
 
-
+    // Connect the experience to the guest reservation
     const experience = {
-
-      reservation_id:
-        window.currentGuest.id,
-
-      experience_name:
-        name,
-
-      amount:
-        Number(price)
-
+      reservation_id: window.currentGuest.id,
+      name: name,
+      amount: Number(price),
+      date: getTodayString()
     };
 
+    console.log(
+      'Saving experience:',
+      experience
+    );
 
     const {
       error
-    } =
-      await supabase
-        .from('experiences')
-        .insert([
-          experience
-        ]);
-
+    } = await supabase
+      .from('experiences')
+      .insert([experience]);
 
     if (error) {
 
+      console.error(
+        'Experience save error:',
+        error
+      );
+
       alert(
-        'Could not add extra charge.\n\n' +
+        'Could not save experience.\n\n' +
         error.message
       );
 
       return;
     }
 
-
-    alert(
-      `${name} added to guest folio.\n\nAmount: ${formatMoney(price)}`
+    console.log(
+      'Experience saved successfully:',
+      experience
     );
 
+    alert(
+      `${name} added successfully.\n\nAmount: ${formatMoney(price)}`
+    );
 
+    // Refresh dashboard
     await updateDashboard();
 
+    // Refresh selected guest folio
     await updateFolio();
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(
       'Experience error:',
@@ -2382,12 +2373,10 @@ async function quickAddExperience(
 
     alert(
       'Unexpected error:\n\n' +
-      error.message
+      (error.message || String(error))
     );
   }
 }
-
-
 // ============================================================
 // POSTING CHECK
 // ============================================================
