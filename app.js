@@ -2145,13 +2145,17 @@ async function checkoutPos(payment_method) {
 
   const total = cart.reduce(
     function (sum, item) {
-      return sum + item.price * item.quantity;
+      return sum + Number(item.price) * Number(item.quantity);
     },
     0
   );
 
-  let reservationId = null;
+  if (!isSupabaseReady()) {
+    alert('Supabase is not connected.');
+    return;
+  }
 
+  // Room charge requires an active guest
   if (payment_method === 'room') {
 
     if (!window.currentGuest) {
@@ -2167,42 +2171,51 @@ async function checkoutPos(payment_method) {
       );
       return;
     }
-
-    reservationId = window.currentGuest.id;
   }
 
   try {
 
     const supabase = getSupabase();
 
-    if (!supabase) {
-      alert('Supabase is not connected.');
+    // Check that the current login session exists
+    const {
+      data: sessionData,
+      error: sessionError
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !sessionData.session) {
+      alert(
+        'Your login session has expired.\n\nPlease log in again.'
+      );
       return;
     }
 
     const order = {
-
       items: cart,
-
       amount: total,
-
-      date: new Date()
-        .toISOString()
-        .split('T')[0],
-
+      date: getTodayString(),
       payment_method:
         payment_method === 'room'
           ? 'Room Charge'
           : 'Direct Pay'
     };
 
+    console.log('Saving POS order:', order);
+
+    /*
+      IMPORTANT:
+      We intentionally do NOT use .select() here.
+
+      The database already accepts INSERT.
+      Removing .select() prevents the POS payment
+      from depending on a SELECT response after INSERT.
+    */
+
     const {
-      data,
       error
     } = await supabase
       .from('pos_orders')
-      .insert([order])
-      .select();
+      .insert([order]);
 
     if (error) {
 
@@ -2220,15 +2233,8 @@ async function checkoutPos(payment_method) {
     }
 
     console.log(
-      'POS order saved:',
-      data
+      'POS order saved successfully.'
     );
-
-    /*
-      If this is a room charge,
-      attach the charge to the current guest folio
-      if your existing folio system supports it.
-    */
 
     alert(
       `POS payment recorded.\n\nTotal: ${formatMoney(total)}`
