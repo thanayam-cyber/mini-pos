@@ -2155,7 +2155,12 @@ async function checkoutPos(payment_method) {
     return;
   }
 
-  // Room charge requires an active guest
+  // -----------------------------------------
+  // ROOM CHARGE
+  // -----------------------------------------
+
+  let reservationId = null;
+
   if (payment_method === 'room') {
 
     if (!window.currentGuest) {
@@ -2171,45 +2176,57 @@ async function checkoutPos(payment_method) {
       );
       return;
     }
+
+    // Link the POS order to the guest reservation
+    reservationId = window.currentGuest.id;
   }
 
   try {
 
     const supabase = getSupabase();
 
-    // Check that the current login session exists
+    // Make sure user is still logged in
     const {
       data: sessionData,
       error: sessionError
     } = await supabase.auth.getSession();
 
     if (sessionError || !sessionData.session) {
+
       alert(
         'Your login session has expired.\n\nPlease log in again.'
       );
+
       return;
     }
 
+    // -----------------------------------------
+    // CREATE POS ORDER
+    // -----------------------------------------
+
     const order = {
+
       items: cart,
+
       amount: total,
+
       date: getTodayString(),
+
       payment_method:
         payment_method === 'room'
           ? 'Room Charge'
-          : 'Direct Pay'
+          : 'Direct Pay',
+
+      // NULL for Direct Pay
+      // Reservation ID for Room Charge
+      reservation_id: reservationId
+
     };
 
-    console.log('Saving POS order:', order);
-
-    /*
-      IMPORTANT:
-      We intentionally do NOT use .select() here.
-
-      The database already accepts INSERT.
-      Removing .select() prevents the POS payment
-      from depending on a SELECT response after INSERT.
-    */
+    console.log(
+      'Saving POS order:',
+      order
+    );
 
     const {
       error
@@ -2233,8 +2250,13 @@ async function checkoutPos(payment_method) {
     }
 
     console.log(
-      'POS order saved successfully.'
+      'POS order saved successfully:',
+      order
     );
+
+    // -----------------------------------------
+    // CLEAR CART
+    // -----------------------------------------
 
     alert(
       `POS payment recorded.\n\nTotal: ${formatMoney(total)}`
@@ -2244,8 +2266,10 @@ async function checkoutPos(payment_method) {
 
     renderCart();
 
+    // Refresh dashboard
     await updateDashboard();
 
+    // Refresh guest folio
     if (window.currentGuest) {
       await updateFolio();
     }
