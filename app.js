@@ -2461,7 +2461,7 @@ async function updateFolio() {
 
               return sum +
                 Number(
-                  order.total || 0
+                  order.amount || 0
                 );
 
             },
@@ -2705,7 +2705,7 @@ async function printFolioInvoice(
 
           const amount =
             Number(
-              order.total || 0
+              order.amount || 0
             );
 
 
@@ -3181,7 +3181,7 @@ async function printDailyRevenueReport() {
 
               return sum +
                 Number(
-                  order.total || 0
+                  order.amount || 0
                 );
 
             },
@@ -3336,7 +3336,7 @@ async function printMonthlyRevenueReport() {
 
               return sum +
                 Number(
-                  order.total || 0
+                  order.amount || 0
                 );
 
             },
@@ -3757,7 +3757,7 @@ async function updateDashboard() {
 
           const amount =
             Number(
-              order.total || 0
+              order.amount || 0
             );
 
 
