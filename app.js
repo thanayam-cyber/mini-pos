@@ -964,15 +964,19 @@ async function saveReservation(event) {
   try {
 
     const reservation = {
-  guest_name: guestName,
-  check_in: checkIn,
-  check_out: checkOut,
-  selection: selection,
-  package_type: packageType,
-  safari: safari,
-  rate: rate,
-  status: 'Confirmed'
-};
+      guest_name: guestName,
+      check_in: checkIn,
+      check_out: checkOut,
+      selection: selection,
+      package_type: packageType,
+      safari: safari,
+      rate: rate,
+
+      // IMPORTANT:
+      // New bookings always start as Confirmed.
+      // They do NOT become In-House automatically.
+      status: 'Confirmed'
+    };
 
 
     const supabase =
@@ -1208,6 +1212,11 @@ function isCheckedOut(reservation) {
 }
 
 
+// ============================================================
+// IMPORTANT:
+// GUEST IS IN-HOUSE ONLY AFTER MANUAL CHECK-IN
+// ============================================================
+
 function isInHouse(reservation) {
 
   const status =
@@ -1216,35 +1225,59 @@ function isInHouse(reservation) {
     );
 
 
-  if (
+  return (
     status === 'in-house' ||
     status === 'in_house' ||
     status === 'inhouse'
-  ) {
-
-    return true;
-  }
+  );
+}
 
 
-  if (
-    isCancelled(reservation) ||
-    isCheckedOut(reservation)
-  ) {
+// ============================================================
+// REVENUE RECOGNITION
+// ============================================================
+//
+// Accommodation revenue is recognized only when the guest
+// has actually checked in.
+//
+// Checked-out guests remain revenue-recognized so historical
+// revenue does not disappear after checkout.
+//
+// Confirmed bookings are NOT revenue-recognized.
+// ============================================================
 
+function isRevenueRecognized(reservation) {
+
+  if (!reservation) {
     return false;
   }
 
 
-  const today =
-    getTodayString();
+  if (isCancelled(reservation)) {
+    return false;
+  }
 
 
-  return (
-    reservation.check_in <= today &&
-    reservation.check_out > today
-  );
+  const status =
+    getReservationStatus(
+      reservation
+    );
+
+
+  return [
+    'in-house',
+    'in_house',
+    'inhouse',
+    'checked-out',
+    'checked_out',
+    'checkedout'
+  ].includes(status);
 }
 
+
+// ============================================================
+// FUTURE BOOKING
+// ============================================================
 
 function isFutureBooking(reservation) {
 
@@ -1473,6 +1506,9 @@ function renderReservationRow(
 
   else {
 
+    statusLabel =
+      'Confirmed';
+
     statusClass =
       'bg-blue-100 text-blue-700';
   }
@@ -1497,6 +1533,7 @@ function renderReservationRow(
   const packageName =
     reservation.package ||
     reservation.board_basis ||
+    reservation.package_type ||
     '-';
 
 
@@ -1511,9 +1548,14 @@ function renderReservationRow(
   let actions = '';
 
 
+  // IMPORTANT:
+  // Check In appears only if the guest is not already
+  // In-House, not checked out and not cancelled.
+
   if (
     !isCancelled(reservation) &&
-    !isCheckedOut(reservation)
+    !isCheckedOut(reservation) &&
+    !isInHouse(reservation)
   ) {
 
     actions += `
@@ -1640,6 +1682,49 @@ async function directCheckIn(id) {
   }
 
 
+  if (isCancelled(reservation)) {
+
+    alert(
+      'A cancelled booking cannot be checked in.'
+    );
+
+    return;
+  }
+
+
+  if (isCheckedOut(reservation)) {
+
+    alert(
+      'This guest has already checked out.'
+    );
+
+    return;
+  }
+
+
+  if (isInHouse(reservation)) {
+
+    alert(
+      'This guest is already in-house.'
+    );
+
+    return;
+  }
+
+
+  const confirmed =
+    confirm(
+      `Check in ${reservation.guest_name || 'Guest'}?\n\n` +
+      `Check-in date: ${formatDate(reservation.check_in)}\n\n` +
+      `This will make the guest In-House and start recognizing the accommodation revenue.`
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
   try {
 
     const supabase =
@@ -1732,6 +1817,16 @@ function selectGuestForFolio(id) {
   }
 
 
+  if (!isInHouse(reservation)) {
+
+    alert(
+      'This guest is not currently checked in.'
+    );
+
+    return;
+  }
+
+
   window.currentGuest =
     reservation;
 
@@ -1747,6 +1842,18 @@ function selectGuestForFolio(id) {
 // ============================================================
 
 async function reopenReservation(id) {
+
+  const confirmed =
+    confirm(
+      'Reopen this checked-out booking?\n\n' +
+      'The booking will return to Confirmed status and will no longer be treated as checked-in.'
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
 
   try {
 
@@ -1773,6 +1880,16 @@ async function reopenReservation(id) {
       );
 
       return;
+    }
+
+
+    if (
+      window.currentGuest &&
+      String(window.currentGuest.id) ===
+      String(id)
+    ) {
+
+      window.currentGuest = null;
     }
 
 
@@ -2288,6 +2405,7 @@ async function checkoutPos(payment_method) {
   }
 }
 
+
 // ============================================================
 // QUICK ADD EXPERIENCE
 // ============================================================
@@ -2377,6 +2495,8 @@ async function quickAddExperience(name, price) {
     );
   }
 }
+
+
 // ============================================================
 // POSTING CHECK
 // ============================================================
@@ -2395,10 +2515,690 @@ function isPostingAllowed() {
 
 
 // ============================================================
+// GET GUEST POS ORDERS
+// ============================================================
+
+async function getGuestPosOrders(guestId) {
+
+  if (!isSupabaseReady()) {
+    return [];
+  }
+
+
+  try {
+
+    const supabase =
+      getSupabase();
+
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from('pos_orders')
+        .select('*');
+
+
+    if (error) {
+
+      console.error(
+        'Guest POS orders error:',
+        error
+      );
+
+      return [];
+    }
+
+
+    return (data || [])
+      .filter(
+        function (order) {
+
+          return String(
+            order.reservation_id
+          ) === String(
+            guestId
+          );
+
+        }
+      );
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Guest POS orders unexpected error:',
+      error
+    );
+
+    return [];
+  }
+}
+
+
+// ============================================================
+// GET GUEST EXPERIENCES
+// ============================================================
+
+async function getGuestExperiences(guestId) {
+
+  if (!isSupabaseReady()) {
+    return [];
+  }
+
+
+  try {
+
+    const supabase =
+      getSupabase();
+
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from('experiences')
+        .select('*');
+
+
+    if (error) {
+
+      console.error(
+        'Guest experiences error:',
+        error
+      );
+
+      return [];
+    }
+
+
+    return (data || [])
+      .filter(
+        function (experience) {
+
+          return String(
+            experience.reservation_id
+          ) === String(
+            guestId
+          );
+
+        }
+      );
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Guest experiences unexpected error:',
+      error
+    );
+
+    return [];
+  }
+}
+
+
+// ============================================================
+// CREATE FOLIO CHARGE DETAILS AREA
+// ============================================================
+
+function ensureFolioChargeDetailsContainer() {
+
+  const view =
+    document.getElementById(
+      'view-folio'
+    );
+
+
+  if (!view) {
+    return null;
+  }
+
+
+  let container =
+    document.getElementById(
+      'folioChargeDetails'
+    );
+
+
+  if (container) {
+    return container;
+  }
+
+
+  container =
+    document.createElement(
+      'div'
+    );
+
+
+  container.id =
+    'folioChargeDetails';
+
+
+  container.className =
+    'mt-5 space-y-4';
+
+
+  view.appendChild(
+    container
+  );
+
+
+  return container;
+}
+
+
+// ============================================================
+// RENDER INDIVIDUAL FOLIO CHARGES
+// ============================================================
+
+function renderFolioChargeDetails(
+  orders,
+  experiences
+) {
+
+  const container =
+    ensureFolioChargeDetailsContainer();
+
+
+  if (!container) {
+    return;
+  }
+
+
+  let html = '';
+
+
+  // ----------------------------------------------------------
+  // RESTAURANT / POS CHARGES
+  // ----------------------------------------------------------
+
+  html += `
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+
+      <div class="flex items-center justify-between mb-3">
+
+        <div>
+          <h3 class="text-sm font-black text-slate-800">
+            Posted Restaurant / POS Charges
+          </h3>
+
+          <p class="text-[10px] text-slate-400 mt-1">
+            Remove a charge if it was posted by mistake.
+          </p>
+        </div>
+
+        <span class="text-[10px] font-bold text-slate-400">
+          ${orders.length} transaction${orders.length === 1 ? '' : 's'}
+        </span>
+
+      </div>
+  `;
+
+
+  if (orders.length === 0) {
+
+    html += `
+      <div class="text-xs text-slate-400 italic py-3">
+        No restaurant / POS charges.
+      </div>
+    `;
+
+  }
+
+  else {
+
+    html += `
+      <div class="space-y-2">
+    `;
+
+
+    orders.forEach(
+      function (order) {
+
+        const amount =
+          Number(
+            order.amount || 0
+          );
+
+
+        let description =
+          'Restaurant POS';
+
+
+        if (
+          Array.isArray(order.items) &&
+          order.items.length
+        ) {
+
+          description =
+            order.items
+              .map(
+                function (item) {
+
+                  return `${item.name} × ${item.quantity}`;
+
+                }
+              )
+              .join(', ');
+        }
+
+
+        const orderId =
+          String(
+            order.id || ''
+          );
+
+
+        html += `
+          <div
+            class="flex items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl"
+          >
+
+            <div class="min-w-0 flex-1">
+
+              <div class="text-xs font-bold text-slate-700 break-words">
+                ${escapeHtml(description)}
+              </div>
+
+              <div class="text-[10px] text-slate-400 mt-1">
+                ${escapeHtml(
+                  order.payment_method ||
+                  'Room Charge'
+                )}
+                ${order.created_at
+                  ? ' • ' + escapeHtml(formatDateTime(order.created_at))
+                  : ''}
+              </div>
+
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+
+              <span class="text-xs font-black text-emerald-700">
+                ${formatMoney(amount)}
+              </span>
+
+              ${
+                orderId
+                  ? `
+                    <button
+                      type="button"
+                      onclick="deletePosCharge('${escapeJsString(orderId)}')"
+                      class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-[10px] font-bold">
+                      Remove
+                    </button>
+                  `
+                  : ''
+              }
+
+            </div>
+
+          </div>
+        `;
+      }
+    );
+
+
+    html += `
+      </div>
+    `;
+  }
+
+
+  html += `
+    </div>
+  `;
+
+
+  // ----------------------------------------------------------
+  // EXPERIENCE CHARGES
+  // ----------------------------------------------------------
+
+  html += `
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+
+      <div class="flex items-center justify-between mb-3">
+
+        <div>
+          <h3 class="text-sm font-black text-slate-800">
+            Posted Experience Charges
+          </h3>
+
+          <p class="text-[10px] text-slate-400 mt-1">
+            Remove an experience if it was posted by mistake.
+          </p>
+        </div>
+
+        <span class="text-[10px] font-bold text-slate-400">
+          ${experiences.length} charge${experiences.length === 1 ? '' : 's'}
+        </span>
+
+      </div>
+  `;
+
+
+  if (experiences.length === 0) {
+
+    html += `
+      <div class="text-xs text-slate-400 italic py-3">
+        No extra experience charges.
+      </div>
+    `;
+
+  }
+
+  else {
+
+    html += `
+      <div class="space-y-2">
+    `;
+
+
+    experiences.forEach(
+      function (experience) {
+
+        const amount =
+          Number(
+            experience.amount || 0
+          );
+
+
+        const name =
+          experience.experience_name ||
+          experience.name ||
+          'Extra Experience';
+
+
+        const experienceId =
+          String(
+            experience.id || ''
+          );
+
+
+        html += `
+          <div
+            class="flex items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl"
+          >
+
+            <div class="min-w-0 flex-1">
+
+              <div class="text-xs font-bold text-slate-700 break-words">
+                ${escapeHtml(name)}
+              </div>
+
+              <div class="text-[10px] text-slate-400 mt-1">
+                Extra Experience
+                ${experience.created_at
+                  ? ' • ' + escapeHtml(formatDateTime(experience.created_at))
+                  : ''}
+              </div>
+
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+
+              <span class="text-xs font-black text-emerald-700">
+                ${formatMoney(amount)}
+              </span>
+
+              ${
+                experienceId
+                  ? `
+                    <button
+                      type="button"
+                      onclick="deleteExperienceCharge('${escapeJsString(experienceId)}')"
+                      class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-[10px] font-bold">
+                      Remove
+                    </button>
+                  `
+                  : ''
+              }
+
+            </div>
+
+          </div>
+        `;
+      }
+    );
+
+
+    html += `
+      </div>
+    `;
+  }
+
+
+  html += `
+    </div>
+  `;
+
+
+  container.innerHTML =
+    html;
+}
+
+
+// ============================================================
+// REMOVE INDIVIDUAL POS CHARGE
+// ============================================================
+//
+// IMPORTANT:
+// This removes one POS TRANSACTION from the folio.
+// If several items were posted together as one transaction,
+// the complete transaction is removed.
+// It does NOT delete the guest or reservation.
+// ============================================================
+
+async function deletePosCharge(id) {
+
+  if (!id) {
+
+    alert(
+      'This POS charge does not have a valid ID.'
+    );
+
+    return;
+  }
+
+
+  if (!isSupabaseReady()) {
+
+    alert(
+      'Supabase is not connected.'
+    );
+
+    return;
+  }
+
+
+  const confirmed =
+    confirm(
+      'Remove this restaurant/POS charge from the guest folio?\n\n' +
+      'The guest and booking will NOT be deleted.\n\n' +
+      'This removes the posted POS transaction.'
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  try {
+
+    const supabase =
+      getSupabase();
+
+
+    const {
+      error
+    } =
+      await supabase
+        .from('pos_orders')
+        .delete()
+        .eq(
+          'id',
+          id
+        );
+
+
+    if (error) {
+
+      console.error(
+        'Delete POS charge error:',
+        error
+      );
+
+      alert(
+        'Could not remove POS charge.\n\n' +
+        error.message
+      );
+
+      return;
+    }
+
+
+    alert(
+      'POS charge removed successfully.'
+    );
+
+
+    await updateFolio();
+
+    await updateDashboard();
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Delete POS charge unexpected error:',
+      error
+    );
+
+    alert(
+      'Unexpected error:\n\n' +
+      (error.message || String(error))
+    );
+  }
+}
+
+
+// ============================================================
+// REMOVE INDIVIDUAL EXPERIENCE CHARGE
+// ============================================================
+
+async function deleteExperienceCharge(id) {
+
+  if (!id) {
+
+    alert(
+      'This experience charge does not have a valid ID.'
+    );
+
+    return;
+  }
+
+
+  if (!isSupabaseReady()) {
+
+    alert(
+      'Supabase is not connected.'
+    );
+
+    return;
+  }
+
+
+  const confirmed =
+    confirm(
+      'Remove this experience charge from the guest folio?\n\n' +
+      'The guest and booking will NOT be deleted.'
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  try {
+
+    const supabase =
+      getSupabase();
+
+
+    const {
+      error
+    } =
+      await supabase
+        .from('experiences')
+        .delete()
+        .eq(
+          'id',
+          id
+        );
+
+
+    if (error) {
+
+      console.error(
+        'Delete experience charge error:',
+        error
+      );
+
+      alert(
+        'Could not remove experience charge.\n\n' +
+        error.message
+      );
+
+      return;
+    }
+
+
+    alert(
+      'Experience charge removed successfully.'
+    );
+
+
+    await updateFolio();
+
+    await updateDashboard();
+
+  }
+
+  catch (error) {
+
+    console.error(
+      'Delete experience charge unexpected error:',
+      error
+    );
+
+    alert(
+      'Unexpected error:\n\n' +
+      (error.message || String(error))
+    );
+  }
+}
+
+
+// ============================================================
 // UPDATE FOLIO
 // ============================================================
 
 async function updateFolio() {
+
+  const detailContainer =
+    document.getElementById(
+      'folioChargeDetails'
+    );
+
 
   if (!window.currentGuest) {
 
@@ -2422,6 +3222,13 @@ async function updateFolio() {
       '$ 0.00'
     );
 
+
+    if (detailContainer) {
+
+      detailContainer.innerHTML = '';
+    }
+
+
     return;
   }
 
@@ -2438,84 +3245,22 @@ async function updateFolio() {
     );
 
 
-  let posAmount = 0;
-  let expAmount = 0;
+  let orders = [];
+  let experiences = [];
 
 
   try {
 
-    const supabase =
-      getSupabase();
+    orders =
+      await getGuestPosOrders(
+        guest.id
+      );
 
 
-    const posResult =
-      await supabase
-        .from('pos_orders')
-        .select('*');
-
-
-    if (!posResult.error) {
-
-      posAmount =
-        (posResult.data || [])
-          .filter(
-            function (order) {
-
-              return String(
-                order.reservation_id
-              ) === String(
-                guest.id
-              );
-
-            }
-          )
-          .reduce(
-            function (sum, order) {
-
-              return sum +
-                Number(
-                  order.amount || 0
-                );
-
-            },
-            0
-          );
-    }
-
-
-    const expResult =
-      await supabase
-        .from('experiences')
-        .select('*');
-
-
-    if (!expResult.error) {
-
-      expAmount =
-        (expResult.data || [])
-          .filter(
-            function (experience) {
-
-              return String(
-                experience.reservation_id
-              ) === String(
-                guest.id
-              );
-
-            }
-          )
-          .reduce(
-            function (sum, experience) {
-
-              return sum +
-                Number(
-                  experience.amount || 0
-                );
-
-            },
-            0
-          );
-    }
+    experiences =
+      await getGuestExperiences(
+        guest.id
+      );
 
   }
 
@@ -2526,6 +3271,34 @@ async function updateFolio() {
       error
     );
   }
+
+
+  const posAmount =
+    orders.reduce(
+      function (sum, order) {
+
+        return sum +
+          Number(
+            order.amount || 0
+          );
+
+      },
+      0
+    );
+
+
+  const expAmount =
+    experiences.reduce(
+      function (sum, experience) {
+
+        return sum +
+          Number(
+            experience.amount || 0
+          );
+
+      },
+      0
+    );
 
 
   const total =
@@ -2556,6 +3329,13 @@ async function updateFolio() {
     'folioTotalBill',
     formatMoney(total)
   );
+
+
+  // Render individual removable charges
+  renderFolioChargeDetails(
+    orders,
+    experiences
+  );
 }
 
 
@@ -2581,6 +3361,17 @@ async function performFinalCheckout() {
 
   const guest =
     window.currentGuest;
+
+
+  // Make sure guest really is in-house
+  if (!isInHouse(guest)) {
+
+    alert(
+      'Only an In-House guest can be checked out.'
+    );
+
+    return;
+  }
 
 
   const confirmed =
@@ -2622,8 +3413,15 @@ async function performFinalCheckout() {
     }
 
 
+    // Update local guest status as well
+    const checkedOutGuest = {
+      ...guest,
+      status: 'checked-out'
+    };
+
+
     await printFolioInvoice(
-      guest
+      checkedOutGuest
     );
 
 
@@ -2686,135 +3484,100 @@ async function printFolioInvoice(
 
   try {
 
-    const supabase =
-      getSupabase();
+    const orders =
+      await getGuestPosOrders(
+        guest.id
+      );
 
 
-    const posResult =
-      await supabase
-        .from('pos_orders')
-        .select('*');
+    orders.forEach(
+      function (order) {
 
-
-    if (!posResult.error) {
-
-      const orders =
-        (posResult.data || [])
-          .filter(
-            function (order) {
-
-              return String(
-                order.reservation_id
-              ) === String(
-                guest.id
-              );
-
-            }
+        const amount =
+          Number(
+            order.amount || 0
           );
 
 
-      orders.forEach(
-        function (order) {
-
-          const amount =
-            Number(
-              order.amount || 0
-            );
+        posAmount += amount;
 
 
-          posAmount += amount;
+        let description =
+          'Restaurant POS';
 
 
-          let description =
-            'Restaurant POS';
+        if (
+          Array.isArray(order.items) &&
+          order.items.length
+        ) {
 
+          description =
+            order.items
+              .map(
+                function (item) {
 
-          if (
-            Array.isArray(order.items) &&
-            order.items.length
-          ) {
+                  return `${item.name} × ${item.quantity}`;
 
-            description =
-              order.items
-                .map(
-                  function (item) {
-
-                    return `${item.name} × ${item.quantity}`;
-
-                  }
-                )
-                .join(', ');
-          }
-
-
-          posRows += `
-            <tr>
-              <td>
-                ${escapeHtml(description)}
-              </td>
-
-              <td style="text-align:right;">
-                ${formatMoney(amount)}
-              </td>
-            </tr>
-          `;
+                }
+              )
+              .join(', ');
         }
+
+
+        posRows += `
+          <tr>
+            <td>
+              ${escapeHtml(description)}
+            </td>
+
+            <td style="text-align:right;">
+              ${formatMoney(amount)}
+            </td>
+          </tr>
+        `;
+      }
+    );
+
+
+    const experiences =
+      await getGuestExperiences(
+        guest.id
       );
-    }
 
 
-    const expResult =
-      await supabase
-        .from('experiences')
-        .select('*');
+    experiences.forEach(
+      function (experience) {
 
-
-    if (!expResult.error) {
-
-      const experiences =
-        (expResult.data || [])
-          .filter(
-            function (experience) {
-
-              return String(
-                experience.reservation_id
-              ) === String(
-                guest.id
-              );
-
-            }
+        const amount =
+          Number(
+            experience.amount || 0
           );
 
 
-      experiences.forEach(
-        function (experience) {
-
-          const amount =
-            Number(
-              experience.amount || 0
-            );
+        expAmount += amount;
 
 
-          expAmount += amount;
+        const experienceName =
+          experience.experience_name ||
+          experience.name ||
+          'Extra Experience';
 
 
-          expRows += `
-            <tr>
-              <td>
-                ${escapeHtml(
-                  experience.experience_name ||
-                  'Extra Experience'
-                )}
-              </td>
+        expRows += `
+          <tr>
+            <td>
+              ${escapeHtml(
+                experienceName
+              )}
+            </td>
 
-              <td style="text-align:right;">
-                ${formatMoney(amount)}
-              </td>
-            </tr>
-          `;
-        }
-      );
-    }
+            <td style="text-align:right;">
+              ${formatMoney(amount)}
+            </td>
+          </tr>
+        `;
+      }
+    );
 
   }
 
@@ -2983,6 +3746,7 @@ async function printFolioInvoice(
         <strong>Occupancy:</strong>
         ${escapeHtml(
           guest.occupancy ||
+          guest.selection ||
           '-'
         )}
 
@@ -2991,6 +3755,7 @@ async function printFolioInvoice(
         <strong>Package:</strong>
         ${escapeHtml(
           guest.package ||
+          guest.package_type ||
           '-'
         )}
 
@@ -3142,9 +3907,12 @@ async function printDailyRevenueReport() {
           .filter(
             function (reservation) {
 
+              // IMPORTANT:
+              // A booking counts only if it was actually
+              // checked in.
               return (
                 reservation.check_in === today &&
-                !isCancelled(
+                isRevenueRecognized(
                   reservation
                 )
               );
@@ -3295,11 +4063,13 @@ async function printMonthlyRevenueReport() {
           .filter(
             function (reservation) {
 
+              // IMPORTANT:
+              // Confirmed bookings are not revenue.
               return (
                 String(
                   reservation.check_in || ''
                 ).slice(0, 7) === month &&
-                !isCancelled(
+                isRevenueRecognized(
                   reservation
                 )
               );
@@ -3696,8 +4466,22 @@ async function updateDashboard() {
   let monthExp = 0;
 
 
+  // ----------------------------------------------------------
+  // ROOM REVENUE
+  // ----------------------------------------------------------
+  //
+  // IMPORTANT:
+  // Confirmed bookings do NOT count.
+  // Only In-House and Checked-Out bookings count.
+  // ----------------------------------------------------------
+
   activeReservations.forEach(
     function (reservation) {
+
+      if (!isRevenueRecognized(reservation)) {
+        return;
+      }
+
 
       const rate =
         Number(
@@ -4191,6 +4975,80 @@ function escapeHtml(
 
 
 // ============================================================
+// HELPER - ESCAPE JAVASCRIPT STRING
+// ============================================================
+
+function escapeJsString(
+  value
+) {
+
+  return String(
+    value || ''
+  )
+    .replace(
+      /\\/g,
+      '\\\\'
+    )
+    .replace(
+      /'/g,
+      "\\'"
+    )
+    .replace(
+      /\r/g,
+      '\\r'
+    )
+    .replace(
+      /\n/g,
+      '\\n'
+    );
+}
+
+
+// ============================================================
+// HELPER - FORMAT DATE/TIME
+// ============================================================
+
+function formatDateTime(
+  dateTime
+) {
+
+  if (!dateTime) {
+    return '';
+  }
+
+
+  const date =
+    new Date(
+      dateTime
+    );
+
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+
+    return String(
+      dateTime
+    );
+  }
+
+
+  return date.toLocaleString(
+    'en-GB',
+    {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }
+  );
+}
+
+
+// ============================================================
 // EXPOSE FUNCTIONS FOR HTML ONCLICK
 // ============================================================
 
@@ -4259,6 +5117,14 @@ window.printMonthlyRevenueReport =
 
 window.clearAllData =
   clearAllData;
+
+
+// NEW: individual folio charge removal
+window.deletePosCharge =
+  deletePosCharge;
+
+window.deleteExperienceCharge =
+  deleteExperienceCharge;
 
 
 // ============================================================
